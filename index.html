@@ -18,7 +18,10 @@
             <div class="top-app-bar-content">
                 <h1 class="app-title">Dishook</h1>
                 <div class="spacer"></div>
-                <button class="icon-button" id="settings-button">
+                <button class="icon-button" id="search-button" title="Check Webhook Status">
+                    <span class="material-icons">search</span>
+                </button>
+                <button class="icon-button" id="settings-button" title="Theme Settings">
                     <span class="material-icons">palette</span>
                 </button>
             </div>
@@ -33,33 +36,6 @@
                     <button class="fab" id="add-webhook-fab">
                         <span class="material-icons">add</span>
                     </button>
-                </div>
-
-                <!-- Webhook Status Checker -->
-                <div class="status-checker">
-                    <h3>Проверить статус вебхука</h3>
-                    <div class="status-checker-input">
-                        <input type="url" id="webhook-status-input" class="text-input" placeholder="https://discord.com/api/webhooks/...">
-                        <button class="button primary" id="check-status-button">
-                            <span class="material-icons">search</span>
-                            Проверить
-                        </button>
-                    </div>
-                    <div id="status-result" class="status-result hidden">
-                        <div class="status-card">
-                            <img id="status-avatar" class="webhook-avatar-large" src="" alt="Webhook Avatar">
-                            <div class="status-info">
-                                <div class="status-header">
-                                    <h4 id="status-name">Webhook Name</h4>
-                                    <button class="icon-button" id="refresh-status-button" title="Refresh">
-                                        <span class="material-icons">refresh</span>
-                                    </button>
-                                </div>
-                                <p id="status-date" class="status-meta">Created: Unknown</p>
-                                <span id="status-badge" class="status-badge"></span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Empty State -->
@@ -136,6 +112,26 @@
                                     Text-to-Speech (TTS)
                                 </label>
                             </div>
+                            
+                            <!-- Allowed Mentions -->
+                            <div class="form-group">
+                                <label>Allowed Mentions</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="mention-everyone" checked>
+                                        <span>@everyone and @here</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="mention-users" checked>
+                                        <span>Users (@user)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="mention-roles" checked>
+                                        <span>Roles (@role)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
                             <button class="button primary" id="send-message-button">
                                 <span class="material-icons">send</span>
                                 Send Message
@@ -145,6 +141,16 @@
                         <!-- Embeds Section -->
                         <section class="detail-section">
                             <h3>Send Embed</h3>
+                            
+                            <!-- Embed Preview -->
+                            <div class="form-group">
+                                <label>Preview</label>
+                                <div id="embed-preview" style="min-height: 100px; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
+                                    <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 16px;">Fill in some fields to see preview</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Main Embed Fields -->
                             <div class="form-group">
                                 <label for="embed-title">Embed Title</label>
                                 <input type="text" id="embed-title" class="text-input" placeholder="Title">
@@ -154,13 +160,83 @@
                                 <textarea id="embed-description" class="text-input" rows="3" placeholder="Description"></textarea>
                             </div>
                             <div class="form-group">
+                                <label for="embed-url">Title URL (optional)</label>
+                                <input type="url" id="embed-url" class="text-input" placeholder="https://example.com">
+                            </div>
+                            <div class="form-group">
                                 <label for="embed-color">Color (Hex)</label>
                                 <input type="text" id="embed-color" class="text-input" placeholder="#2196F3" value="#2196F3">
                             </div>
-                            <div class="form-group">
-                                <label for="embed-url">URL (optional)</label>
-                                <input type="url" id="embed-url" class="text-input" placeholder="https://example.com">
+                            
+                            <!-- Author Section -->
+                            <div class="form-subsection">
+                                <h4>Author (optional)</h4>
+                                <div class="form-group">
+                                    <label for="embed-author-name">Author Name</label>
+                                    <input type="text" id="embed-author-name" class="text-input" placeholder="Author name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="embed-author-url">Author URL</label>
+                                    <input type="url" id="embed-author-url" class="text-input" placeholder="https://example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="embed-author-icon">Author Icon URL</label>
+                                    <input type="url" id="embed-author-icon" class="text-input" placeholder="https://example.com/icon.png">
+                                </div>
                             </div>
+                            
+                            <!-- Fields Section -->
+                            <div class="form-subsection">
+                                <h4>Fields (up to 25)</h4>
+                                <div class="form-group">
+                                    <label for="field-name">Field Name</label>
+                                    <input type="text" id="field-name" class="text-input" placeholder="Field name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="field-value">Field Value</label>
+                                    <textarea id="field-value" class="text-input" rows="2" placeholder="Field value"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="field-inline">
+                                        <span>Inline</span>
+                                    </label>
+                                </div>
+                                <button class="button outlined" id="add-field-button" style="margin-bottom: 12px;">
+                                    <span class="material-icons">add</span>
+                                    Add Field
+                                </button>
+                                <div id="embed-fields-list" style="margin-top: 12px;">
+                                    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px;">No fields added yet</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Images Section -->
+                            <div class="form-subsection">
+                                <h4>Images (optional)</h4>
+                                <div class="form-group">
+                                    <label for="embed-image-url">Main Image URL</label>
+                                    <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png">
+                                </div>
+                                <div class="form-group">
+                                    <label for="embed-thumbnail-url">Thumbnail URL</label>
+                                    <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png">
+                                </div>
+                            </div>
+                            
+                            <!-- Footer Section -->
+                            <div class="form-subsection">
+                                <h4>Footer (optional)</h4>
+                                <div class="form-group">
+                                    <label for="embed-footer-text">Footer Text</label>
+                                    <input type="text" id="embed-footer-text" class="text-input" placeholder="Footer text">
+                                </div>
+                                <div class="form-group">
+                                    <label for="embed-footer-icon">Footer Icon URL</label>
+                                    <input type="url" id="embed-footer-icon" class="text-input" placeholder="https://example.com/icon.png">
+                                </div>
+                            </div>
+                            
                             <button class="button primary" id="send-embed-button">
                                 <span class="material-icons">article</span>
                                 Send Embed
@@ -171,7 +247,7 @@
                         <section class="detail-section">
                             <h3>Webhook Capabilities</h3>
                             <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px; font-size: 14px;">
-                                Available actions for Discord webhooks. Green badges are currently implemented.
+                                Available actions for Discord webhooks.
                             </p>
                             <div id="capabilities-list" style="display: flex; flex-direction: column; gap: 16px;">
                                 <!-- Capabilities will be dynamically inserted here -->
@@ -245,6 +321,53 @@
             <div class="dialog-actions">
                 <button class="button text" id="cancel-add-button">Cancel</button>
                 <button class="button primary" id="confirm-add-button">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Webhook Status Checker Dialog -->
+    <div id="status-checker-dialog" class="dialog-overlay">
+        <div class="dialog" style="max-width: 600px;">
+            <h2>Check Webhook Status</h2>
+            <div class="form-group">
+                <label for="webhook-status-input">Webhook URL</label>
+                <input type="url" id="webhook-status-input" class="text-input" placeholder="https://discord.com/api/webhooks/...">
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button class="button primary" id="check-status-button" style="flex: 1;">
+                    <span class="material-icons">search</span>
+                    Check Status
+                </button>
+            </div>
+            
+            <div id="status-result" class="hidden" style="margin-top: 24px;">
+                <div class="status-card">
+                    <img id="status-avatar" class="webhook-avatar-large" src="" alt="Webhook Avatar" style="width: 64px; height: 64px; border-radius: 50%;">
+                    <div class="status-info" style="flex: 1;">
+                        <div class="status-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4 id="status-name" style="margin: 0;">Webhook Name</h4>
+                                <p id="status-date" class="status-meta" style="margin: 4px 0 8px 0; font-size: 14px; color: var(--md-sys-color-on-surface-variant);">Created: Unknown</p>
+                            </div>
+                            <button class="icon-button" id="refresh-status-button" title="Refresh">
+                                <span class="material-icons">refresh</span>
+                            </button>
+                        </div>
+                        <span id="status-badge" class="status-badge"></span>
+                    </div>
+                </div>
+                
+                <!-- Metadata section -->
+                <div style="margin-top: 16px;">
+                    <h4 style="margin-bottom: 8px;">Webhook Metadata</h4>
+                    <div class="metadata-container" style="max-height: 300px; overflow-y: auto;">
+                        <pre id="status-metadata" style="font-size: 12px;"></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dialog-actions">
+                <button class="button text" id="close-status-checker-button">Close</button>
             </div>
         </div>
     </div>
