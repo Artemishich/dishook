@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dishook - Discord Webhook Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app" class="app-container">
+        <!-- Top App Bar -->
+        <header class="top-app-bar">
+            <div class="top-app-bar-content">
+                <button class="icon-button" id="menu-button">
+                    <span class="material-icons">menu</span>
+                </button>
+                <h1 class="app-title">Dishook</h1>
+                <div class="spacer"></div>
+                <button class="icon-button" id="settings-button">
+                    <span class="material-icons">palette</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="view-header">
+                    <h2>Webhooks</h2>
+                    <button class="fab" id="add-webhook-fab">
+                        <span class="material-icons">add</span>
+                    </button>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state">
+                    <span class="material-icons empty-icon">webhook</span>
+                    <h3>No webhooks yet</h3>
+                    <p>Add your first webhook to get started</p>
+                </div>
+
+                <!-- Webhooks Grid -->
+                <div id="webhooks-grid" class="webhooks-grid hidden">
+                    <!-- Webhook cards will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Detail View -->
+            <div id="detail-view" class="view">
+                <div class="detail-container">
+                    <button class="icon-button back-button" id="back-button">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    
+                    <div class="detail-content">
+                        <!-- Webhook Header -->
+                        <div class="webhook-header">
+                            <img id="detail-avatar" class="webhook-avatar-large" src="" alt="Webhook Avatar">
+                            <div class="webhook-info">
+                                <h2 id="detail-name">Webhook Name</h2>
+                                <div class="token-display">
+                                    <code id="detail-token">••••••••••••••••</code>
+                                    <button class="icon-button" id="copy-token-button" title="Copy Token">
+                                        <span class="material-icons">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Edit Section -->
+                        <section class="detail-section">
+                            <h3>Edit Webhook</h3>
+                            <div class="form-group">
+                                <label for="edit-name">Webhook Name</label>
+                                <input type="text" id="edit-name" class="text-input" placeholder="Enter webhook name">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-avatar">Avatar URL</label>
+                                <input type="url" id="edit-avatar" class="text-input" placeholder="https://example.com/avatar.png">
+                            </div>
+                            <button class="button primary" id="save-changes-button">
+                                <span class="material-icons">save</span>
+                                Save Changes
+                            </button>
+                        </section>
+
+                        <!-- Send Message Section -->
+                        <section class="detail-section">
+                            <h3>Send Message</h3>
+                            <div class="form-group">
+                                <label for="message-content">Message</label>
+                                <textarea id="message-content" class="text-input" rows="4" placeholder="Enter your message"></textarea>
+                            </div>
+                            <button class="button primary" id="send-message-button">
+                                <span class="material-icons">send</span>
+                                Send Message
+                            </button>
+                        </section>
+
+                        <!-- Danger Zone -->
+                        <section class="detail-section danger-zone">
+                            <h3>Danger Zone</h3>
+                            
+                            <div class="danger-item">
+                                <div>
+                                    <h4>Spam Messages</h4>
+                                    <p>Send multiple messages with custom delay</p>
+                                </div>
+                                <button class="button outlined" id="spam-button">
+                                    <span class="material-icons">repeat</span>
+                                    Configure
+                                </button>
+                            </div>
+
+                            <div class="danger-item">
+                                <div>
+                                    <h4>Delete Webhook</h4>
+                                    <p>Permanently remove this webhook from Discord</p>
+                                </div>
+                                <button class="button danger" id="delete-webhook-button">
+                                    <span class="material-icons">delete</span>
+                                    Delete
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- Webhook Metadata -->
+                        <section class="detail-section">
+                            <h3>Webhook Data</h3>
+                            <div class="metadata-container">
+                                <pre id="webhook-metadata"></pre>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Webhook Dialog -->
+    <div id="add-webhook-dialog" class="dialog-overlay">
+        <div class="dialog">
+            <h2>Add Webhook</h2>
+            <div class="form-group">
+                <label for="webhook-url-input">Webhook URL</label>
+                <input type="url" id="webhook-url-input" class="text-input" placeholder="https://discord.com/api/webhooks/...">
+            </div>
+            <div class="dialog-actions">
+                <button class="button text" id="cancel-add-button">Cancel</button>
+                <button class="button primary" id="confirm-add-button">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spam Configuration Dialog -->
+    <div id="spam-dialog" class="dialog-overlay">
+        <div class="dialog">
+            <h2>Spam Messages</h2>
+            <div class="form-group">
+                <label for="spam-message">Message</label>
+                <textarea id="spam-message" class="text-input" rows="3" placeholder="Message to spam"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="spam-delay">Delay (milliseconds)</label>
+                <input type="number" id="spam-delay" class="text-input" value="1000" min="100">
+            </div>
+            <div class="form-group">
+                <label for="spam-count">Repeat Count</label>
+                <input type="number" id="spam-count" class="text-input" value="5" min="1" max="100">
+            </div>
+            <div class="dialog-actions">
+                <button class="button text" id="cancel-spam-button">Cancel</button>
+                <button class="button danger" id="confirm-spam-button">Start Spam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="confirm-dialog" class="dialog-overlay">
+        <div class="dialog">
+            <h2 id="confirm-title">Confirm Action</h2>
+            <p id="confirm-message">Are you sure?</p>
+            <div class="dialog-actions">
+                <button class="button text" id="cancel-confirm-button">Cancel</button>
+                <button class="button danger" id="confirm-action-button">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Theme Picker Dialog -->
+    <div id="theme-dialog" class="dialog-overlay">
+        <div class="dialog">
+            <h2>Choose Accent Color</h2>
+            <div class="color-picker">
+                <button class="color-option" data-color="blue" style="background-color: #2196F3;"></button>
+                <button class="color-option" data-color="red" style="background-color: #F44336;"></button>
+                <button class="color-option" data-color="green" style="background-color: #4CAF50;"></button>
+                <button class="color-option" data-color="purple" style="background-color: #9C27B0;"></button>
+                <button class="color-option" data-color="orange" style="background-color: #FF9800;"></button>
+                <button class="color-option" data-color="teal" style="background-color: #009688;"></button>
+                <button class="color-option" data-color="pink" style="background-color: #E91E63;"></button>
+                <button class="color-option" data-color="indigo" style="background-color: #3F51B5;"></button>
+            </div>
+            <div class="dialog-actions">
+                <button class="button text" id="close-theme-button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snackbar for notifications -->
+    <div id="snackbar" class="snackbar">
+        <span id="snackbar-message">Notification</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
