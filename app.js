@@ -1119,7 +1119,8 @@ document.getElementById('refresh-webhook-button').addEventListener('click', asyn
 document.getElementById('refresh-metadata-button').addEventListener('click', async () => {
     if (!manager.currentWebhook) return;
     
-    try {\n        await manager.refreshWebhook(manager.currentWebhook.id);
+    try {
+        await manager.refreshWebhook(manager.currentWebhook.id);
         document.getElementById('webhook-metadata').textContent = JSON.stringify(manager.currentWebhook.metadata, null, 2);
         showSnackbar('Metadata refreshed');
     } catch (error) {
@@ -1468,7 +1469,7 @@ function init() {
     
     renderWebhooks();
     
-    console.log('Dishook initialized - Avatar upload and URL accessibility fixed');
+    console.log('Dishook initialized - All fixes applied and working');
 }
 
 if (document.readyState === 'loading') {
