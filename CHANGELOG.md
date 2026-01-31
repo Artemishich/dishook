@@ -1,113 +1,72 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to Dishook will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [1.0.0] - 2026-02-01
+## [1.1.0] - 2026-02-01
 
 ### Added
+- ✨ **Multiple Embeds Support** - Send up to 10 embeds in a single message
+- ✨ **Extended Embed Features**:
+  - Author section with name, URL, and icon
+  - Up to 25 fields with inline/regular layout options
+  - Main image and thumbnail support
+  - Footer with text and icon
+  - Title URL support
+- ✨ **Allowed Mentions Control** - Granular control over mentions:
+  - Toggle @everyone and @here mentions
+  - Toggle user mentions
+  - Toggle role mentions
+- ✨ **Live Embed Preview** - Real-time preview of embeds as you type
+- ✨ **Search Button in Header** - Quick access to webhook status checker
+- ✨ **Status Checker Modal** - Moved to dedicated modal dialog with:
+  - Enhanced UI with backdrop blur
+  - Full metadata viewer
+  - Refresh capability
+  - Better mobile experience
+- ✨ **Form Subsections** - Better organized embed form with clear sections
 
-#### Core Features
-- ✨ Complete Discord webhook manager with Material Design 3 styling
-- 🎨 8 customizable accent color themes (Blue, Red, Green, Purple, Orange, Teal, Pink, Indigo)
-- 📊 Webhook dashboard with grid view layout
-- 🔧 Add/remove webhooks via Discord webhook URLs
-- 📝 Full webhook detail page with editing capabilities
-- 📧 Send messages through webhooks
-- ⚠️ Danger Zone with spam messages and webhook deletion
-- 💾 LocalStorage-based data persistence
-- 🔐 Token security with masking and clipboard copy
-- 🌍 Responsive design for all screen sizes
+### Changed
+- 🔧 **Danger Button Colors** - Always red with white text in both light and dark modes
+- 🔧 **Modal Backdrop** - Enhanced with blur effect for better focus
+- 🔧 **Capabilities List** - Now shows only supported features (removed unsupported ones)
+- 🔧 **Status Checker** - Moved from dashboard to modal dialog accessible via header search button
+- 🔧 **Error Color in Dark Mode** - Changed from #F2B8B5 to #F44336 for consistency
 
-#### UI/UX
-- Smooth animations and transitions following Material Design guidelines
-- Floating Action Button (FAB) for quick webhook addition
-- Modal dialogs for user confirmations
-- Snackbar notifications for user feedback
-- Empty state with helpful guidance
-- Material Icons integration
-- Roboto font typography
+### Improved
+- 🚀 **UX** - Cleaner interface with better organization
+- 🚀 **Accessibility** - Better keyboard navigation and focus states
+- 🚀 **Mobile Experience** - Optimized modal dialogs for mobile devices
+- 🚀 **Code Organization** - Better structured JavaScript with clear sections
 
-#### Technical
-- Modern ES6+ JavaScript with async/await
-- Modular code architecture with WebhookManager class
-- Discord Webhook API integration
-- Comprehensive error handling
-- URL validation using regex
-- Clipboard API integration
-- Theme persistence in localStorage
+### Technical Details
+- Added `embedFields` array to WebhookManager state
+- Implemented `renderEmbedFieldsList()` for field management
+- Implemented `updateEmbedPreview()` for real-time preview
+- Added Discord-style embed preview rendering
+- Enhanced `sendMessage()` to support allowed_mentions parameter
+- Updated capabilities list to show only implemented features
 
-#### Documentation
-- 📚 Comprehensive README with features, installation, and usage guide
-- 🤝 CONTRIBUTING guide with code style guidelines
-- 🔒 SECURITY policy with vulnerability reporting
-- 📄 MIT License
-- 🐛 GitHub issue templates for bugs and features
-- 📝 CODE_OF_CONDUCT for community guidelines
-- 📝 CHANGELOG for version tracking
+## [1.0.0] - 2026-01-30
 
-### Security
-- Implemented webhook token masking in UI
-- Added strict URL validation
-- HTTPS-only connections to Discord API
-- LocalStorage data isolation
-- Input sanitization and validation
-
-### Developer Experience
-- Clean, well-commented code
-- JSDoc documentation for public methods
-- Modular and extensible architecture
-- .gitignore for common files
-- No build process required (pure HTML/CSS/JS)
-
----
-
-## [Unreleased]
-
-### Planned for v1.1.0
-- Export/Import webhook configurations
-- Webhook groups and folders
-- Message templates
-- Embed message builder
-- Message scheduling
-
-### Planned for v1.2.0
-- Multiple webhook selection
-- Batch operations
-- Webhook statistics
-- Message history
-- Search and filter functionality
-
-### Planned for v2.0.0
-- Progressive Web App (PWA) support
-- Offline functionality
-- Desktop app (Electron)
-- Browser extension
-- Optional cloud sync
+### Initial Release
+- ✅ Basic webhook management (add, edit, delete)
+- ✅ Send text messages with custom username and avatar
+- ✅ Basic embed support (title, description, color, URL)
+- ✅ Text-to-Speech (TTS) support
+- ✅ Webhook status checker
+- ✅ Spam messages feature
+- ✅ 8 Material Design themes
+- ✅ Dark mode by default
+- ✅ Metadata viewer
+- ✅ localStorage persistence
+- ✅ Responsive design
 
 ---
 
-## Version History
-
-### How to Read This Changelog
-
-- **Added**: New features
-- **Changed**: Changes in existing functionality
-- **Deprecated**: Soon-to-be removed features
-- **Removed**: Removed features
-- **Fixed**: Bug fixes
-- **Security**: Security improvements
-
-### Semantic Versioning
-
-Given a version number MAJOR.MINOR.PATCH:
-- **MAJOR**: Incompatible API changes
-- **MINOR**: New functionality (backwards compatible)
-- **PATCH**: Bug fixes (backwards compatible)
-
----
-
-[1.0.0]: https://github.com/Artemishich/dishook/releases/tag/v1.0.0
-[Unreleased]: https://github.com/Artemishich/dishook/compare/v1.0.0...HEAD
+## Legend
+- ✨ New feature
+- 🔧 Changed/Updated
+- 🐛 Bug fix
+- 🚀 Performance/UX improvement
+- 📝 Documentation
+- 🚧 Work in progress
