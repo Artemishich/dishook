@@ -14,6 +14,8 @@ class WebhookManager {
         this.currentWebhook = null;
         this.embedFields = [];
         this.uploadedFiles = {}; // Store uploaded file data
+        this.attachmentFiles = []; // Store attachment files
+        this.MAX_ATTACHMENTS = 10;
         this.loadWebhooks();
     }
 
@@ -464,6 +466,7 @@ function showWebhookDetail(id) {
     manager.currentWebhook = webhook;
     manager.embedFields = [];
     manager.uploadedFiles = {};
+    manager.attachmentFiles = [];
     
     // Update UI
     document.getElementById('detail-avatar').src = webhook.avatar;
@@ -475,10 +478,11 @@ function showWebhookDetail(id) {
     document.getElementById('message-content').value = '';
     document.getElementById('message-tts').checked = false;
     
-    // Clear file inputs
-    document.getElementById('message-avatar-file').value = '';
+    // Clear file inputs and hide clear buttons
+    clearFileInput('message-avatar');
     document.getElementById('message-attachments').value = '';
     document.getElementById('attachments-preview').innerHTML = '';
+    updateAttachmentButtonState();
     
     // Clear embed form
     clearEmbedForm();
@@ -506,11 +510,11 @@ function clearEmbedForm() {
     document.getElementById('embed-image-url').value = '';
     document.getElementById('embed-thumbnail-url').value = '';
     
-    // Clear file inputs
-    document.getElementById('embed-author-icon-file').value = '';
-    document.getElementById('embed-footer-icon-file').value = '';
-    document.getElementById('embed-image-file').value = '';
-    document.getElementById('embed-thumbnail-file').value = '';
+    // Clear file inputs using helper
+    clearFileInput('embed-author-icon');
+    clearFileInput('embed-footer-icon');
+    clearFileInput('embed-image');
+    clearFileInput('embed-thumbnail');
     
     manager.embedFields = [];
     manager.uploadedFiles = {};
@@ -640,11 +644,49 @@ async function getImageUrl(fileInputId, urlInputId, fileKey) {
         return await handleFileUpload(fileInput.files[0], fileKey);
     }
     
-    if (urlInput && urlInput.value.trim()) {
+    if (urlInput && urlInput.value.trim() && !urlInput.value.startsWith('data:')) {
         return urlInput.value.trim();
     }
     
     return null;
+}
+
+/**
+ * Clear file input and related UI
+ * @param {string} baseName - Base name without -file/-url suffix
+ */
+function clearFileInput(baseName) {
+    const fileInput = document.getElementById(baseName + '-file');
+    const urlInput = document.getElementById(baseName + '-url');
+    const clearBtn = document.querySelector(`[data-file="${baseName}-file"]`);
+    
+    if (fileInput) fileInput.value = '';
+    if (urlInput) urlInput.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    
+    // Remove from uploaded files
+    const keys = Object.keys(manager.uploadedFiles);
+    keys.forEach(key => {
+        if (key.includes(baseName)) {
+            delete manager.uploadedFiles[key];
+        }
+    });
+}
+
+/**
+ * Update attachment button state based on limit
+ */
+function updateAttachmentButtonState() {
+    const addBtn = document.getElementById('btn-add-attachments');
+    if (!addBtn) return;
+    
+    if (manager.attachmentFiles.length >= manager.MAX_ATTACHMENTS) {
+        addBtn.disabled = true;
+        addBtn.title = `Maximum ${manager.MAX_ATTACHMENTS} attachments reached`;
+    } else {
+        addBtn.disabled = false;
+        addBtn.title = 'Add Images';
+    }
 }
 
 /**
@@ -802,6 +844,122 @@ async function updateEmbedPreview() {
 
 // ==================== EVENT HANDLERS ====================
 
+// Inline upload button handlers
+document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.btn-file-trigger');
+    if (trigger) {
+        const targetId = trigger.dataset.target;
+        const fileInput = document.getElementById(targetId);
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+    
+    const clearBtn = e.target.closest('.btn-clear-file');
+    if (clearBtn) {
+        const urlInputId = clearBtn.dataset.input;
+        const fileInputId = clearBtn.dataset.file;
+        
+        if (urlInputId) {
+            document.getElementById(urlInputId).value = '';
+        }
+        if (fileInputId) {
+            document.getElementById(fileInputId).value = '';
+        }
+        
+        clearBtn.style.display = 'none';
+        updateEmbedPreview();
+    }
+});
+
+// Single file upload handlers (avatars, icons)
+['message-avatar-file', 'embed-author-icon-file', 'embed-footer-icon-file', 
+ 'embed-image-file', 'embed-thumbnail-file'].forEach(id => {
+    const fileInput = document.getElementById(id);
+    if (!fileInput) return;
+    
+    fileInput.addEventListener('change', async (e) => {
+        if (!e.target.files || !e.target.files[0]) return;
+        
+        const baseName = id.replace('-file', '');
+        const urlInput = document.getElementById(baseName + '-url');
+        const clearBtn = document.querySelector(`[data-file="${id}"]`);
+        
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = (event) => {
+            if (urlInput) {
+                urlInput.value = file.name;
+            }
+            if (clearBtn) {
+                clearBtn.style.display = 'inline-flex';
+            }
+            updateEmbedPreview();
+        };
+        
+        reader.readAsDataURL(file);
+    });
+});
+
+// Multiple attachments handler with limit
+document.getElementById('message-attachments')?.addEventListener('change', (e) => {
+    const preview = document.getElementById('attachments-preview');
+    const input = e.target;
+    
+    if (!input.files) return;
+    
+    const newFiles = Array.from(input.files);
+    const availableSlots = manager.MAX_ATTACHMENTS - manager.attachmentFiles.length;
+    
+    if (newFiles.length > availableSlots) {
+        showSnackbar(`Can only add ${availableSlots} more attachment(s). Maximum is ${manager.MAX_ATTACHMENTS}.`);
+        input.value = '';
+        return;
+    }
+    
+    newFiles.forEach((file, index) => {
+        if (manager.attachmentFiles.length >= manager.MAX_ATTACHMENTS) {
+            return;
+        }
+        
+        manager.attachmentFiles.push(file);
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const item = document.createElement('div');
+            item.className = 'attachment-item';
+            item.dataset.fileIndex = manager.attachmentFiles.length - 1;
+            
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'attachment-remove';
+            removeBtn.textContent = '×';
+            removeBtn.onclick = () => {
+                const idx = parseInt(item.dataset.fileIndex);
+                manager.attachmentFiles.splice(idx, 1);
+                item.remove();
+                updateAttachmentButtonState();
+                
+                // Update remaining indices
+                Array.from(preview.children).forEach((child, i) => {
+                    child.dataset.fileIndex = i;
+                });
+            };
+            
+            item.appendChild(img);
+            item.appendChild(removeBtn);
+            preview.appendChild(item);
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    input.value = '';
+    updateAttachmentButtonState();
+});
+
 // Tabs Navigation
 document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -844,58 +1002,6 @@ document.getElementById('embed-color')?.addEventListener('input', (e) => {
     });
     
     updateEmbedPreview();
-});
-
-// File Upload Handlers - Avatar
-document.getElementById('message-avatar-file')?.addEventListener('change', async (e) => {
-    if (e.target.files && e.target.files[0]) {
-        const dataUrl = await handleFileUpload(e.target.files[0], 'messageAvatar');
-        document.getElementById('message-avatar-url').value = dataUrl;
-    }
-});
-
-// File Upload Handlers - Attachments
-document.getElementById('message-attachments')?.addEventListener('change', (e) => {
-    const preview = document.getElementById('attachments-preview');
-    preview.innerHTML = '';
-    
-    if (e.target.files) {
-        Array.from(e.target.files).forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const item = document.createElement('div');
-                item.className = 'attachment-item';
-                
-                const img = document.createElement('img');
-                img.src = event.target.result;
-                
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'attachment-remove';
-                removeBtn.textContent = '×';
-                removeBtn.onclick = () => {
-                    // Remove from preview
-                    item.remove();
-                    
-                    // Clear input if no more files
-                    if (preview.children.length === 0) {
-                        document.getElementById('message-attachments').value = '';
-                    }
-                };
-                
-                item.appendChild(img);
-                item.appendChild(removeBtn);
-                preview.appendChild(item);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-});
-
-// File Upload Handlers - Embed Images (with preview update)
-['embed-author-icon-file', 'embed-footer-icon-file', 'embed-image-file', 'embed-thumbnail-file'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', () => {
-        updateEmbedPreview();
-    });
 });
 
 // Search button (opens status checker modal)
@@ -1055,11 +1161,9 @@ document.getElementById('send-message-button').addEventListener('click', async (
     
     const content = document.getElementById('message-content').value.trim();
     const username = document.getElementById('message-username').value.trim();
-    const avatarUrl = document.getElementById('message-avatar-url').value.trim();
     const tts = document.getElementById('message-tts').checked;
-    const attachmentsInput = document.getElementById('message-attachments');
     
-    if (!content && (!attachmentsInput.files || attachmentsInput.files.length === 0)) {
+    if (!content && manager.attachmentFiles.length === 0) {
         showSnackbar('Message must have content or attachments');
         return;
     }
@@ -1067,16 +1171,21 @@ document.getElementById('send-message-button').addEventListener('click', async (
     const payload = {};
     if (content) payload.content = content;
     if (username) payload.username = username;
-    if (avatarUrl) payload.avatar_url = avatarUrl;
     if (tts) payload.tts = tts;
     
-    const files = attachmentsInput.files ? Array.from(attachmentsInput.files) : [];
+    // Get avatar if uploaded
+    const avatarFile = document.getElementById('message-avatar-file');
+    if (avatarFile && avatarFile.files && avatarFile.files[0]) {
+        const avatarData = await handleFileUpload(avatarFile.files[0], 'messageAvatar');
+        payload.avatar_url = avatarData;
+    }
     
     try {
-        await manager.sendMessage(manager.currentWebhook.id, payload, files);
+        await manager.sendMessage(manager.currentWebhook.id, payload, manager.attachmentFiles);
         document.getElementById('message-content').value = '';
-        document.getElementById('message-attachments').value = '';
         document.getElementById('attachments-preview').innerHTML = '';
+        manager.attachmentFiles = [];
+        updateAttachmentButtonState();
         showSnackbar('Message sent successfully');
     } catch (error) {
         showSnackbar(error.message);
@@ -1353,7 +1462,7 @@ function init() {
     
     renderWebhooks();
     
-    console.log('Dishook initialized with tabs, color palette, and file uploads');
+    console.log('Dishook initialized with inline upload buttons and attachment limits');
 }
 
 if (document.readyState === 'loading') {
