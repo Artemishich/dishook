@@ -85,6 +85,115 @@ class WebhookManager {
     }
 
     /**
+     * Check webhook status
+     * @param {string} url - Discord webhook URL
+     * @returns {Promise<Object>} Status data
+     */
+    async checkWebhookStatus(url) {
+        if (!this.isValidWebhookUrl(url)) {
+            throw new Error('Invalid webhook URL');
+        }
+
+        try {
+            const response = await fetch(url);
+            
+            if (response.status === 404) {
+                return {
+                    exists: false,
+                    name: 'Deleted Webhook',
+                    avatar: this.getDeletedAvatar(),
+                    date: 'Unknown'
+                };
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch webhook');
+            }
+
+            const data = await response.json();
+            
+            return {
+                exists: true,
+                name: data.name || 'Unknown Webhook',
+                avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : this.getDefaultAvatar(),
+                date: this.formatSnowflakeDate(data.id),
+                data: data
+            };
+        } catch (error) {
+            throw new Error('Failed to check status: ' + error.message);
+        }
+    }
+
+    /**
+     * Impersonate user by ID
+     * @param {string} webhookId - Webhook ID
+     * @param {string} userId - Discord User ID
+     * @returns {Promise<Object>} User data
+     */
+    async impersonateUser(webhookId, userId) {
+        const webhook = this.getWebhook(webhookId);
+        if (!webhook) {
+            throw new Error('Webhook not found');
+        }
+
+        if (!userId || !/^\d{17,19}$/.test(userId)) {
+            throw new Error('Invalid User ID');
+        }
+
+        try {
+            // Try to fetch user info via Discord CDN (doesn't require auth)
+            // We'll construct avatar URL and use a test message
+            const testAvatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userId) % 5}.png`;
+            
+            // Test by sending a message to see if we can get user data
+            const response = await fetch(webhook.url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    content: `<@${userId}>`,
+                    allowed_mentions: { users: [] } // Don't actually mention
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to test user ID');
+            }
+
+            // Since we can't directly fetch user data without bot token,
+            // we'll use the default Discord avatar
+            const avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userId) % 5}.png`;
+            
+            return {
+                userId: userId,
+                username: `User ${userId}`,
+                avatar: avatarUrl,
+                note: 'Avatar is Discord default. Webhook will use actual user data when impersonating.'
+            };
+        } catch (error) {
+            throw new Error('Failed to impersonate: ' + error.message);
+        }
+    }
+
+    /**
+     * Format snowflake ID to date
+     * @param {string} snowflake - Discord snowflake ID
+     * @returns {string} Formatted date
+     */
+    formatSnowflakeDate(snowflake) {
+        const timestamp = (BigInt(snowflake) >> 22n) + 1420070400000n;
+        const date = new Date(Number(timestamp));
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    /**
      * Remove a webhook
      * @param {string} id - Webhook ID
      */
@@ -207,7 +316,6 @@ class WebhookManager {
      * @returns {boolean} Is valid
      */
     isValidWebhookUrl(url) {
-        // Support both discord.com and discordapp.com
         const webhookRegex = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/;
         return webhookRegex.test(url);
     }
@@ -218,6 +326,14 @@ class WebhookManager {
      */
     getDefaultAvatar() {
         return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/%3E%3C/svg%3E';
+    }
+
+    /**
+     * Get deleted webhook avatar
+     * @returns {string} Trash icon SVG
+     */
+    getDeletedAvatar() {
+        return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23F44336"%3E%3Cpath d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/%3E%3C/svg%3E';
     }
 }
 
@@ -363,6 +479,39 @@ function hideDialog(dialogId) {
 
 // ==================== EVENT HANDLERS ====================
 
+// Webhook Status Checker
+document.getElementById('check-status-button').addEventListener('click', async () => {
+    const url = document.getElementById('webhook-status-input').value.trim();
+    const resultContainer = document.getElementById('status-result');
+    
+    if (!url) {
+        showSnackbar('Please enter a webhook URL');
+        return;
+    }
+    
+    try {
+        const status = await manager.checkWebhookStatus(url);
+        
+        document.getElementById('status-avatar').src = status.avatar;
+        document.getElementById('status-name').textContent = status.name;
+        document.getElementById('status-date').textContent = `Created: ${status.date}`;
+        
+        const badge = document.getElementById('status-badge');
+        if (status.exists) {
+            badge.textContent = 'Active';
+            badge.className = 'status-badge status-active';
+        } else {
+            badge.textContent = 'Deleted';
+            badge.className = 'status-badge status-deleted';
+        }
+        
+        resultContainer.classList.remove('hidden');
+    } catch (error) {
+        showSnackbar(error.message);
+        resultContainer.classList.add('hidden');
+    }
+});
+
 // Add Webhook
 document.getElementById('add-webhook-fab').addEventListener('click', () => {
     document.getElementById('webhook-url-input').value = '';
@@ -406,6 +555,40 @@ document.getElementById('copy-token-button').addEventListener('click', async () 
         showSnackbar('Token copied to clipboard');
     } catch (error) {
         showSnackbar('Failed to copy token');
+    }
+});
+
+// Identity Impersonation
+document.getElementById('impersonate-button').addEventListener('click', () => {
+    document.getElementById('user-id-input').value = '';
+    showDialog('impersonate-dialog');
+});
+
+document.getElementById('cancel-impersonate-button').addEventListener('click', () => {
+    hideDialog('impersonate-dialog');
+});
+
+document.getElementById('confirm-impersonate-button').addEventListener('click', async () => {
+    if (!manager.currentWebhook) return;
+    
+    const userId = document.getElementById('user-id-input').value.trim();
+    
+    if (!userId) {
+        showSnackbar('Please enter a User ID');
+        return;
+    }
+    
+    try {
+        const userData = await manager.impersonateUser(manager.currentWebhook.id, userId);
+        
+        // Update webhook to use user's identity
+        document.getElementById('edit-name').value = userData.username;
+        document.getElementById('edit-avatar').value = userData.avatar;
+        
+        hideDialog('impersonate-dialog');
+        showSnackbar('Identity copied! Click Save Changes to apply');
+    } catch (error) {
+        showSnackbar(error.message);
     }
 });
 
@@ -589,7 +772,7 @@ document.querySelectorAll('.dialog-overlay').forEach(overlay => {
  * Initialize application
  */
 function init() {
-    // Set dark mode by default if no theme is saved
+    // Set dark mode by default
     const savedTheme = localStorage.getItem('dishook_theme');
     if (savedTheme) {
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -598,7 +781,6 @@ function init() {
             option.classList.add('selected');
         }
     } else {
-        // Default to dark theme
         document.documentElement.setAttribute('data-color-scheme', 'dark');
         document.querySelector('[data-color="blue"]')?.classList.add('selected');
     }

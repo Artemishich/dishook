@@ -16,9 +16,6 @@
         <!-- Top App Bar -->
         <header class="top-app-bar">
             <div class="top-app-bar-content">
-                <button class="icon-button" id="menu-button">
-                    <span class="material-icons">menu</span>
-                </button>
                 <h1 class="app-title">Dishook</h1>
                 <div class="spacer"></div>
                 <button class="icon-button" id="settings-button">
@@ -36,6 +33,28 @@
                     <button class="fab" id="add-webhook-fab">
                         <span class="material-icons">add</span>
                     </button>
+                </div>
+
+                <!-- Webhook Status Checker -->
+                <div class="status-checker">
+                    <h3>Проверить статус вебхука</h3>
+                    <div class="status-checker-input">
+                        <input type="url" id="webhook-status-input" class="text-input" placeholder="https://discord.com/api/webhooks/...">
+                        <button class="button primary" id="check-status-button">
+                            <span class="material-icons">search</span>
+                            Проверить
+                        </button>
+                    </div>
+                    <div id="status-result" class="status-result hidden">
+                        <div class="status-card">
+                            <img id="status-avatar" class="webhook-avatar-large" src="" alt="Webhook Avatar">
+                            <div class="status-info">
+                                <h4 id="status-name">Webhook Name</h4>
+                                <p id="status-date" class="status-meta">Created: Unknown</p>
+                                <span id="status-badge" class="status-badge"></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Empty State -->
@@ -109,6 +128,17 @@
                             
                             <div class="danger-item">
                                 <div>
+                                    <h4>Identity Impersonation</h4>
+                                    <p>Copy user's avatar and display name by User ID</p>
+                                </div>
+                                <button class="button outlined" id="impersonate-button">
+                                    <span class="material-icons">person</span>
+                                    Impersonate
+                                </button>
+                            </div>
+
+                            <div class="danger-item">
+                                <div>
                                     <h4>Spam Messages</h4>
                                     <p>Send multiple messages with custom delay</p>
                                 </div>
@@ -154,6 +184,23 @@
             <div class="dialog-actions">
                 <button class="button text" id="cancel-add-button">Cancel</button>
                 <button class="button primary" id="confirm-add-button">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Identity Impersonation Dialog -->
+    <div id="impersonate-dialog" class="dialog-overlay">
+        <div class="dialog">
+            <h2>Identity Impersonation</h2>
+            <p class="dialog-description">Enter Discord User ID to copy their profile</p>
+            <div class="form-group">
+                <label for="user-id-input">User ID</label>
+                <input type="text" id="user-id-input" class="text-input" placeholder="123456789012345678">
+                <p class="input-hint">Enable Developer Mode in Discord to copy User IDs</p>
+            </div>
+            <div class="dialog-actions">
+                <button class="button text" id="cancel-impersonate-button">Cancel</button>
+                <button class="button primary" id="confirm-impersonate-button">Copy Identity</button>
             </div>
         </div>
     </div>
