@@ -661,7 +661,10 @@ function clearFileInput(baseName) {
     const clearBtn = document.querySelector(`[data-file="${baseName}-file"]`);
     
     if (fileInput) fileInput.value = '';
-    if (urlInput) urlInput.value = '';
+    if (urlInput) {
+        urlInput.value = '';
+        urlInput.removeAttribute('readonly');
+    }
     if (clearBtn) clearBtn.style.display = 'none';
     
     // Remove from uploaded files
@@ -861,7 +864,9 @@ document.addEventListener('click', (e) => {
         const fileInputId = clearBtn.dataset.file;
         
         if (urlInputId) {
-            document.getElementById(urlInputId).value = '';
+            const urlInput = document.getElementById(urlInputId);
+            urlInput.value = '';
+            urlInput.removeAttribute('readonly');
         }
         if (fileInputId) {
             document.getElementById(fileInputId).value = '';
@@ -891,6 +896,7 @@ document.addEventListener('click', (e) => {
         reader.onload = (event) => {
             if (urlInput) {
                 urlInput.value = file.name;
+                urlInput.setAttribute('readonly', 'readonly');
             }
             if (clearBtn) {
                 clearBtn.style.display = 'inline-flex';
@@ -1113,8 +1119,7 @@ document.getElementById('refresh-webhook-button').addEventListener('click', asyn
 document.getElementById('refresh-metadata-button').addEventListener('click', async () => {
     if (!manager.currentWebhook) return;
     
-    try {
-        await manager.refreshWebhook(manager.currentWebhook.id);
+    try {\n        await manager.refreshWebhook(manager.currentWebhook.id);
         document.getElementById('webhook-metadata').textContent = JSON.stringify(manager.currentWebhook.metadata, null, 2);
         showSnackbar('Metadata refreshed');
     } catch (error) {
@@ -1163,6 +1168,9 @@ document.getElementById('send-message-button').addEventListener('click', async (
     const username = document.getElementById('message-username').value.trim();
     const tts = document.getElementById('message-tts').checked;
     
+    // Get avatar (file or URL)
+    const avatarUrl = await getImageUrl('message-avatar-file', 'message-avatar-url', 'messageAvatar');
+    
     if (!content && manager.attachmentFiles.length === 0) {
         showSnackbar('Message must have content or attachments');
         return;
@@ -1173,11 +1181,9 @@ document.getElementById('send-message-button').addEventListener('click', async (
     if (username) payload.username = username;
     if (tts) payload.tts = tts;
     
-    // Get avatar if uploaded
-    const avatarFile = document.getElementById('message-avatar-file');
-    if (avatarFile && avatarFile.files && avatarFile.files[0]) {
-        const avatarData = await handleFileUpload(avatarFile.files[0], 'messageAvatar');
-        payload.avatar_url = avatarData;
+    // Only add avatar_url if it's a URL (not a file)
+    if (avatarUrl && !avatarUrl.startsWith('data:')) {
+        payload.avatar_url = avatarUrl;
     }
     
     try {
@@ -1462,7 +1468,7 @@ function init() {
     
     renderWebhooks();
     
-    console.log('Dishook initialized with inline upload buttons and attachment limits');
+    console.log('Dishook initialized - Avatar upload and URL accessibility fixed');
 }
 
 if (document.readyState === 'loading') {
