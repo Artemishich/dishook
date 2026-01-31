@@ -318,6 +318,96 @@ class WebhookManager {
     getDeletedAvatar() {
         return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23F44336"%3E%3Cpath d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/%3E%3C/svg%3E';
     }
+
+    /**
+     * Get webhook capabilities
+     * @returns {Array<Object>} List of capabilities
+     */
+    getWebhookCapabilities() {
+        return [
+            {
+                name: 'Send Messages',
+                description: 'Send text messages with custom username and avatar',
+                icon: 'message',
+                supported: true
+            },
+            {
+                name: 'Send Embeds',
+                description: 'Send rich embedded content with colors, titles, and descriptions',
+                icon: 'article',
+                supported: true
+            },
+            {
+                name: 'Text-to-Speech',
+                description: 'Send messages that will be read aloud in voice channels',
+                icon: 'record_voice_over',
+                supported: true
+            },
+            {
+                name: 'Attachments',
+                description: 'Upload files and images with webhook messages',
+                icon: 'attach_file',
+                supported: false,
+                note: 'Requires multipart/form-data upload'
+            },
+            {
+                name: 'Edit Messages',
+                description: 'Edit previously sent webhook messages',
+                icon: 'edit',
+                supported: false,
+                note: 'Requires message ID from webhook response'
+            },
+            {
+                name: 'Delete Messages',
+                description: 'Delete messages sent by this webhook',
+                icon: 'delete',
+                supported: false,
+                note: 'Requires message ID from webhook response'
+            },
+            {
+                name: 'Threads',
+                description: 'Send messages to specific forum/thread channels',
+                icon: 'forum',
+                supported: false,
+                note: 'Requires thread_id parameter'
+            },
+            {
+                name: 'Multiple Embeds',
+                description: 'Send up to 10 embeds in a single message',
+                icon: 'view_carousel',
+                supported: false,
+                note: 'Not implemented in UI yet'
+            },
+            {
+                name: 'Embed Fields',
+                description: 'Add inline and regular fields to embeds',
+                icon: 'view_module',
+                supported: false,
+                note: 'Not implemented in UI yet'
+            },
+            {
+                name: 'Embed Images',
+                description: 'Add images, thumbnails, author, and footer to embeds',
+                icon: 'image',
+                supported: false,
+                note: 'Not implemented in UI yet'
+            },
+            {
+                name: 'Allowed Mentions',
+                description: 'Control which users/roles can be mentioned',
+                icon: 'alternate_email',
+                supported: false,
+                note: 'Not implemented in UI yet'
+            },
+            {
+                name: 'Components',
+                description: 'Add buttons and select menus to messages',
+                icon: 'smart_button',
+                supported: false,
+                note: 'Webhook cannot receive interactions'
+            }
+        ];
+    }
 }
 
 // Initialize manager
@@ -453,7 +543,85 @@ function showWebhookDetail(id) {
     document.getElementById('embed-url').value = '';
     document.getElementById('webhook-metadata').textContent = JSON.stringify(webhook.metadata, null, 2);
     
+    // Render capabilities
+    renderCapabilities();
+    
     switchView('detail-view');
+}
+
+/**
+ * Render webhook capabilities
+ */
+function renderCapabilities() {
+    const container = document.getElementById('capabilities-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    const capabilities = manager.getWebhookCapabilities();
+    
+    capabilities.forEach(capability => {
+        const item = document.createElement('div');
+        item.className = 'capability-item';
+        
+        const icon = document.createElement('span');
+        icon.className = 'material-icons capability-icon';
+        icon.textContent = capability.icon;
+        icon.style.color = capability.supported ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-outline)';
+        
+        const info = document.createElement('div');
+        info.className = 'capability-info';
+        
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.gap = '8px';
+        
+        const name = document.createElement('h4');
+        name.textContent = capability.name;
+        name.style.margin = '0';
+        
+        const badge = document.createElement('span');
+        badge.className = 'status-badge';
+        badge.style.fontSize = '10px';
+        badge.style.padding = '2px 8px';
+        if (capability.supported) {
+            badge.textContent = 'Supported';
+            badge.classList.add('status-active');
+        } else {
+            badge.textContent = 'Not Available';
+            badge.style.backgroundColor = 'rgba(var(--md-sys-color-outline), 0.15)';
+            badge.style.color = 'var(--md-sys-color-on-surface-variant)';
+            badge.style.border = '1px solid var(--md-sys-color-outline)';
+        }
+        
+        header.appendChild(name);
+        header.appendChild(badge);
+        
+        const description = document.createElement('p');
+        description.textContent = capability.description;
+        description.style.margin = '4px 0 0 0';
+        description.style.fontSize = '14px';
+        description.style.color = 'var(--md-sys-color-on-surface-variant)';
+        
+        if (capability.note) {
+            const note = document.createElement('p');
+            note.textContent = capability.note;
+            note.style.margin = '4px 0 0 0';
+            note.style.fontSize = '12px';
+            note.style.color = 'var(--md-sys-color-outline)';
+            note.style.fontStyle = 'italic';
+            info.appendChild(header);
+            info.appendChild(description);
+            info.appendChild(note);
+        } else {
+            info.appendChild(header);
+            info.appendChild(description);
+        }
+        
+        item.appendChild(icon);
+        item.appendChild(info);
+        container.appendChild(item);
+    });
 }
 
 /**
