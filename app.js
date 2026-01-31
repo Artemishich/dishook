@@ -13,6 +13,7 @@ class WebhookManager {
         this.webhooks = [];
         this.currentWebhook = null;
         this.embedFields = [];
+        this.uploadedFiles = {}; // Store uploaded file data
         this.loadWebhooks();
     }
 
@@ -235,33 +236,55 @@ class WebhookManager {
     }
 
     /**
-     * Send a message through webhook
+     * Send a message through webhook with multipart/form-data support for files
      * @param {string} id - Webhook ID
      * @param {Object} payload - Message payload
+     * @param {Array<File>} files - Optional files to upload
      * @returns {Promise<void>}
      */
-    async sendMessage(id, payload) {
+    async sendMessage(id, payload, files = []) {
         const webhook = this.getWebhook(id);
         if (!webhook) {
             throw new Error('Webhook not found');
         }
 
-        if (!payload.content && !payload.embeds && !payload.files) {
+        if (!payload.content && !payload.embeds && files.length === 0) {
             throw new Error('Message must have content, embeds, or files');
         }
 
         try {
-            const response = await fetch(webhook.url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            if (files.length > 0) {
+                // Use FormData for file uploads
+                const formData = new FormData();
+                formData.append('payload_json', JSON.stringify(payload));
+                
+                files.forEach((file, index) => {
+                    formData.append(`files[${index}]`, file);
+                });
+                
+                const response = await fetch(webhook.url, {
+                    method: 'POST',
+                    body: formData
+                });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to send message');
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to send message');
+                }
+            } else {
+                // Regular JSON payload
+                const response = await fetch(webhook.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to send message');
+                }
             }
         } catch (error) {
             throw new Error('Failed to send message: ' + error.message);
@@ -319,51 +342,6 @@ class WebhookManager {
      */
     getDeletedAvatar() {
         return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23F44336"%3E%3Cpath d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/%3E%3C/svg%3E';
-    }
-
-    /**
-     * Get webhook capabilities (only supported ones)
-     * @returns {Array<Object>} List of capabilities
-     */
-    getWebhookCapabilities() {
-        return [
-            {
-                name: 'Send Messages',
-                description: 'Send text messages with custom username and avatar',
-                icon: 'message',
-                supported: true
-            },
-            {
-                name: 'Multiple Embeds',
-                description: 'Send up to 10 embeds in a single message',
-                icon: 'view_carousel',
-                supported: true
-            },
-            {
-                name: 'Embed Fields',
-                description: 'Add inline and regular fields to embeds',
-                icon: 'view_module',
-                supported: true
-            },
-            {
-                name: 'Embed Images',
-                description: 'Add images, thumbnails, author, and footer to embeds',
-                icon: 'image',
-                supported: true
-            },
-            {
-                name: 'Text-to-Speech',
-                description: 'Send messages that will be read aloud in voice channels',
-                icon: 'record_voice_over',
-                supported: true
-            },
-            {
-                name: 'Allowed Mentions',
-                description: 'Control which users/roles can be mentioned',
-                icon: 'alternate_email',
-                supported: true
-            }
-        ];
     }
 }
 
@@ -485,6 +463,7 @@ function showWebhookDetail(id) {
     
     manager.currentWebhook = webhook;
     manager.embedFields = [];
+    manager.uploadedFiles = {};
     
     // Update UI
     document.getElementById('detail-avatar').src = webhook.avatar;
@@ -492,9 +471,14 @@ function showWebhookDetail(id) {
     document.getElementById('detail-token').textContent = maskToken(webhook.token);
     document.getElementById('edit-name').value = webhook.name;
     document.getElementById('message-username').value = '';
-    document.getElementById('message-avatar').value = '';
+    document.getElementById('message-avatar-url').value = '';
     document.getElementById('message-content').value = '';
     document.getElementById('message-tts').checked = false;
+    
+    // Clear file inputs
+    document.getElementById('message-avatar-file').value = '';
+    document.getElementById('message-attachments').value = '';
+    document.getElementById('attachments-preview').innerHTML = '';
     
     // Clear embed form
     clearEmbedForm();
@@ -502,9 +486,6 @@ function showWebhookDetail(id) {
     updateEmbedPreview();
     
     document.getElementById('webhook-metadata').textContent = JSON.stringify(webhook.metadata, null, 2);
-    
-    // Render capabilities
-    renderCapabilities();
     
     switchView('detail-view');
 }
@@ -519,66 +500,27 @@ function clearEmbedForm() {
     document.getElementById('embed-url').value = '';
     document.getElementById('embed-author-name').value = '';
     document.getElementById('embed-author-url').value = '';
-    document.getElementById('embed-author-icon').value = '';
+    document.getElementById('embed-author-icon-url').value = '';
     document.getElementById('embed-footer-text').value = '';
-    document.getElementById('embed-footer-icon').value = '';
+    document.getElementById('embed-footer-icon-url').value = '';
     document.getElementById('embed-image-url').value = '';
     document.getElementById('embed-thumbnail-url').value = '';
+    
+    // Clear file inputs
+    document.getElementById('embed-author-icon-file').value = '';
+    document.getElementById('embed-footer-icon-file').value = '';
+    document.getElementById('embed-image-file').value = '';
+    document.getElementById('embed-thumbnail-file').value = '';
+    
     manager.embedFields = [];
-}
-
-/**
- * Render webhook capabilities
- */
-function renderCapabilities() {
-    const container = document.getElementById('capabilities-list');
-    if (!container) return;
+    manager.uploadedFiles = {};
     
-    container.innerHTML = '';
-    const capabilities = manager.getWebhookCapabilities();
-    
-    capabilities.forEach(capability => {
-        const item = document.createElement('div');
-        item.className = 'capability-item';
-        
-        const icon = document.createElement('span');
-        icon.className = 'material-icons capability-icon';
-        icon.textContent = capability.icon;
-        icon.style.color = 'var(--md-sys-color-primary)';
-        
-        const info = document.createElement('div');
-        info.className = 'capability-info';
-        
-        const header = document.createElement('div');
-        header.style.display = 'flex';
-        header.style.alignItems = 'center';
-        header.style.gap = '8px';
-        
-        const name = document.createElement('h4');
-        name.textContent = capability.name;
-        name.style.margin = '0';
-        
-        const badge = document.createElement('span');
-        badge.className = 'status-badge status-active';
-        badge.style.fontSize = '10px';
-        badge.style.padding = '2px 8px';
-        badge.textContent = 'Supported';
-        
-        header.appendChild(name);
-        header.appendChild(badge);
-        
-        const description = document.createElement('p');
-        description.textContent = capability.description;
-        description.style.margin = '4px 0 0 0';
-        description.style.fontSize = '14px';
-        description.style.color = 'var(--md-sys-color-on-surface-variant)';
-        
-        info.appendChild(header);
-        info.appendChild(description);
-        
-        item.appendChild(icon);
-        item.appendChild(info);
-        container.appendChild(item);
+    // Update color swatch selection
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.classList.remove('selected');
+        if (swatch.dataset.color === '#2196F3') {
+            swatch.classList.add('selected');
+        }
     });
 }
 
@@ -616,7 +558,7 @@ function renderEmbedFieldsList() {
     if (!container) return;
     
     if (manager.embedFields.length === 0) {
-        container.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px;">No fields added yet</p>';
+        container.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; text-align: center; padding: 16px;">No fields added yet</p>';
         return;
     }
     
@@ -663,9 +605,52 @@ function renderEmbedFieldsList() {
 }
 
 /**
+ * Handle file input and convert to data URL or prepare for upload
+ * @param {File} file - File object
+ * @param {string} key - Storage key
+ * @returns {Promise<string>} Data URL or upload reference
+ */
+async function handleFileUpload(file, key) {
+    if (!file) return null;
+    
+    // Store file for later upload
+    manager.uploadedFiles[key] = file;
+    
+    // Return data URL for preview
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Get image URL (prioritize uploaded file, then URL input)
+ * @param {string} fileInputId - File input element ID
+ * @param {string} urlInputId - URL input element ID
+ * @param {string} fileKey - File storage key
+ * @returns {Promise<string|null>} Image URL
+ */
+async function getImageUrl(fileInputId, urlInputId, fileKey) {
+    const fileInput = document.getElementById(fileInputId);
+    const urlInput = document.getElementById(urlInputId);
+    
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        return await handleFileUpload(fileInput.files[0], fileKey);
+    }
+    
+    if (urlInput && urlInput.value.trim()) {
+        return urlInput.value.trim();
+    }
+    
+    return null;
+}
+
+/**
  * Update embed preview
  */
-function updateEmbedPreview() {
+async function updateEmbedPreview() {
     const preview = document.getElementById('embed-preview');
     if (!preview) return;
     
@@ -675,11 +660,13 @@ function updateEmbedPreview() {
     const url = document.getElementById('embed-url').value.trim();
     const authorName = document.getElementById('embed-author-name').value.trim();
     const authorUrl = document.getElementById('embed-author-url').value.trim();
-    const authorIcon = document.getElementById('embed-author-icon').value.trim();
     const footerText = document.getElementById('embed-footer-text').value.trim();
-    const footerIcon = document.getElementById('embed-footer-icon').value.trim();
-    const imageUrl = document.getElementById('embed-image-url').value.trim();
-    const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
+    
+    // Get image URLs (from files or URLs)
+    const authorIcon = await getImageUrl('embed-author-icon-file', 'embed-author-icon-url', 'authorIcon');
+    const footerIcon = await getImageUrl('embed-footer-icon-file', 'embed-footer-icon-url', 'footerIcon');
+    const imageUrl = await getImageUrl('embed-image-file', 'embed-image-url', 'mainImage');
+    const thumbnailUrl = await getImageUrl('embed-thumbnail-file', 'embed-thumbnail-url', 'thumbnail');
     
     if (!title && !description && manager.embedFields.length === 0) {
         preview.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">Fill in some fields to see preview</p>';
@@ -783,7 +770,7 @@ function updateEmbedPreview() {
         embedDiv.appendChild(imgDiv);
     }
     
-    // Thumbnail (position absolute in real Discord)
+    // Thumbnail
     if (thumbnailUrl && !imageUrl) {
         const thumbDiv = document.createElement('img');
         thumbDiv.src = thumbnailUrl;
@@ -815,6 +802,102 @@ function updateEmbedPreview() {
 
 // ==================== EVENT HANDLERS ====================
 
+// Tabs Navigation
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        
+        // Update active tab
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Update active panel
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+        document.querySelector(`[data-panel="${tabName}"]`).classList.add('active');
+    });
+});
+
+// Color Palette Selection
+document.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+        const color = swatch.dataset.color;
+        
+        // Update selected state
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        swatch.classList.add('selected');
+        
+        // Update color input
+        document.getElementById('embed-color').value = color;
+        updateEmbedPreview();
+    });
+});
+
+// Color input changes (manual entry)
+document.getElementById('embed-color')?.addEventListener('input', (e) => {
+    const color = e.target.value;
+    
+    // Update swatch selection if matching
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        if (swatch.dataset.color.toLowerCase() === color.toLowerCase()) {
+            swatch.click();
+        }
+    });
+    
+    updateEmbedPreview();
+});
+
+// File Upload Handlers - Avatar
+document.getElementById('message-avatar-file')?.addEventListener('change', async (e) => {
+    if (e.target.files && e.target.files[0]) {
+        const dataUrl = await handleFileUpload(e.target.files[0], 'messageAvatar');
+        document.getElementById('message-avatar-url').value = dataUrl;
+    }
+});
+
+// File Upload Handlers - Attachments
+document.getElementById('message-attachments')?.addEventListener('change', (e) => {
+    const preview = document.getElementById('attachments-preview');
+    preview.innerHTML = '';
+    
+    if (e.target.files) {
+        Array.from(e.target.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const item = document.createElement('div');
+                item.className = 'attachment-item';
+                
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'attachment-remove';
+                removeBtn.textContent = '×';
+                removeBtn.onclick = () => {
+                    // Remove from preview
+                    item.remove();
+                    
+                    // Clear input if no more files
+                    if (preview.children.length === 0) {
+                        document.getElementById('message-attachments').value = '';
+                    }
+                };
+                
+                item.appendChild(img);
+                item.appendChild(removeBtn);
+                preview.appendChild(item);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+
+// File Upload Handlers - Embed Images (with preview update)
+['embed-author-icon-file', 'embed-footer-icon-file', 'embed-image-file', 'embed-thumbnail-file'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => {
+        updateEmbedPreview();
+    });
+});
+
 // Search button (opens status checker modal)
 document.getElementById('search-button').addEventListener('click', () => {
     document.getElementById('webhook-status-input').value = '';
@@ -844,7 +927,6 @@ document.getElementById('check-status-button').addEventListener('click', async (
             badge.textContent = 'Active';
             badge.className = 'status-badge status-active';
             
-            // Show metadata
             if (status.metadata) {
                 document.getElementById('status-metadata').textContent = JSON.stringify(status.metadata, null, 2);
             }
@@ -960,8 +1042,6 @@ document.getElementById('save-changes-button').addEventListener('click', async (
     try {
         await manager.updateWebhook(manager.currentWebhook.id, { name });
         showSnackbar('Webhook updated successfully');
-        
-        // Refresh detail view
         showWebhookDetail(manager.currentWebhook.id);
         renderWebhooks();
     } catch (error) {
@@ -975,35 +1055,28 @@ document.getElementById('send-message-button').addEventListener('click', async (
     
     const content = document.getElementById('message-content').value.trim();
     const username = document.getElementById('message-username').value.trim();
-    const avatarUrl = document.getElementById('message-avatar').value.trim();
+    const avatarUrl = document.getElementById('message-avatar-url').value.trim();
     const tts = document.getElementById('message-tts').checked;
+    const attachmentsInput = document.getElementById('message-attachments');
     
-    if (!content) {
-        showSnackbar('Message cannot be empty');
+    if (!content && (!attachmentsInput.files || attachmentsInput.files.length === 0)) {
+        showSnackbar('Message must have content or attachments');
         return;
     }
     
-    const payload = { content, tts };
+    const payload = {};
+    if (content) payload.content = content;
     if (username) payload.username = username;
     if (avatarUrl) payload.avatar_url = avatarUrl;
+    if (tts) payload.tts = tts;
     
-    // Allowed Mentions
-    const mentionEveryone = document.getElementById('mention-everyone').checked;
-    const mentionUsers = document.getElementById('mention-users').checked;
-    const mentionRoles = document.getElementById('mention-roles').checked;
-    
-    if (!mentionEveryone || !mentionUsers || !mentionRoles) {
-        payload.allowed_mentions = {
-            parse: []
-        };
-        if (mentionEveryone) payload.allowed_mentions.parse.push('everyone');
-        if (mentionUsers) payload.allowed_mentions.parse.push('users');
-        if (mentionRoles) payload.allowed_mentions.parse.push('roles');
-    }
+    const files = attachmentsInput.files ? Array.from(attachmentsInput.files) : [];
     
     try {
-        await manager.sendMessage(manager.currentWebhook.id, payload);
+        await manager.sendMessage(manager.currentWebhook.id, payload, files);
         document.getElementById('message-content').value = '';
+        document.getElementById('message-attachments').value = '';
+        document.getElementById('attachments-preview').innerHTML = '';
         showSnackbar('Message sent successfully');
     } catch (error) {
         showSnackbar(error.message);
@@ -1011,9 +1084,9 @@ document.getElementById('send-message-button').addEventListener('click', async (
 });
 
 // Embed form change listeners
-['embed-title', 'embed-description', 'embed-color', 'embed-url', 
- 'embed-author-name', 'embed-author-url', 'embed-author-icon',
- 'embed-footer-text', 'embed-footer-icon', 'embed-image-url', 'embed-thumbnail-url'
+['embed-title', 'embed-description', 'embed-url', 
+ 'embed-author-name', 'embed-author-url', 'embed-author-icon-url',
+ 'embed-footer-text', 'embed-footer-icon-url', 'embed-image-url', 'embed-thumbnail-url'
 ].forEach(id => {
     const element = document.getElementById(id);
     if (element) {
@@ -1051,11 +1124,7 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     const url = document.getElementById('embed-url').value.trim();
     const authorName = document.getElementById('embed-author-name').value.trim();
     const authorUrl = document.getElementById('embed-author-url').value.trim();
-    const authorIcon = document.getElementById('embed-author-icon').value.trim();
     const footerText = document.getElementById('embed-footer-text').value.trim();
-    const footerIcon = document.getElementById('embed-footer-icon').value.trim();
-    const imageUrl = document.getElementById('embed-image-url').value.trim();
-    const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
     
     if (!title && !description && manager.embedFields.length === 0) {
         showSnackbar('Embed must have title, description, or fields');
@@ -1072,6 +1141,12 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
         const color = parseInt(colorHex.replace('#', ''), 16);
         embed.color = color;
     }
+    
+    // Get image URLs (prioritize uploaded files)
+    const authorIcon = await getImageUrl('embed-author-icon-file', 'embed-author-icon-url', 'authorIcon');
+    const footerIcon = await getImageUrl('embed-footer-icon-file', 'embed-footer-icon-url', 'footerIcon');
+    const imageUrl = await getImageUrl('embed-image-file', 'embed-image-url', 'mainImage');
+    const thumbnailUrl = await getImageUrl('embed-thumbnail-file', 'embed-thumbnail-url', 'thumbnail');
     
     // Author
     if (authorName) {
@@ -1097,8 +1172,16 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     
     const payload = { embeds: [embed] };
     
+    // Collect files if any were uploaded
+    const files = [];
+    Object.values(manager.uploadedFiles).forEach(file => {
+        if (file instanceof File) {
+            files.push(file);
+        }
+    });
+    
     try {
-        await manager.sendMessage(manager.currentWebhook.id, payload);
+        await manager.sendMessage(manager.currentWebhook.id, payload, files);
         clearEmbedForm();
         renderEmbedFieldsList();
         updateEmbedPreview();
@@ -1144,7 +1227,6 @@ document.getElementById('confirm-spam-button').addEventListener('click', async (
     
     hideDialog('spam-dialog');
     
-    // Send messages with delay
     let sent = 0;
     for (let i = 0; i < count; i++) {
         try {
@@ -1176,7 +1258,6 @@ document.getElementById('remove-webhook-button').addEventListener('click', () =>
     
     showDialog('confirm-dialog');
     
-    // Set action for remove
     document.getElementById('confirm-action-button').onclick = async () => {
         if (!manager.currentWebhook) return;
         const webhookId = manager.currentWebhook.id;
@@ -1200,7 +1281,6 @@ document.getElementById('delete-webhook-button').addEventListener('click', () =>
     
     showDialog('confirm-dialog');
     
-    // Set action for delete
     document.getElementById('confirm-action-button').onclick = async () => {
         if (!manager.currentWebhook) return;
         const webhookId = manager.currentWebhook.id;
@@ -1238,7 +1318,6 @@ document.querySelectorAll('.color-option').forEach(option => {
         document.documentElement.setAttribute('data-theme', color);
         localStorage.setItem('dishook_theme', color);
         
-        // Update selected state
         document.querySelectorAll('.color-option').forEach(opt => {
             opt.classList.remove('selected');
         });
@@ -1259,11 +1338,7 @@ document.querySelectorAll('.dialog-overlay').forEach(overlay => {
 
 // ==================== INITIALIZATION ====================
 
-/**
- * Initialize application
- */
 function init() {
-    // Set dark mode by default
     const savedTheme = localStorage.getItem('dishook_theme');
     if (savedTheme) {
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -1276,13 +1351,11 @@ function init() {
         document.querySelector('[data-color="blue"]')?.classList.add('selected');
     }
     
-    // Render initial webhooks
     renderWebhooks();
     
-    console.log('Dishook initialized successfully with dark mode');
+    console.log('Dishook initialized with tabs, color palette, and file uploads');
 }
 
-// Initialize on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
