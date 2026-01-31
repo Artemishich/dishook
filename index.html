@@ -102,15 +102,16 @@
                             <!-- Avatar with Upload/URL -->
                             <div class="form-group">
                                 <label>Avatar (optional)</label>
-                                <div class="image-input-group">
-                                    <input type="url" id="message-avatar-url" class="text-input" placeholder="https://example.com/avatar.png" style="margin-bottom: 8px;">
-                                    <div class="file-upload-wrapper">
-                                        <input type="file" id="message-avatar-file" accept="image/*" class="file-input">
-                                        <label for="message-avatar-file" class="file-upload-label">
-                                            <span class="material-icons">upload_file</span>
-                                            <span>Or upload image</span>
-                                        </label>
-                                    </div>
+                                <div class="input-with-button">
+                                    <input type="url" id="message-avatar-url" class="text-input" placeholder="https://example.com/avatar.png" readonly>
+                                    <input type="file" id="message-avatar-file" accept="image/*" class="file-input">
+                                    <button type="button" class="button outlined btn-file-trigger" data-target="message-avatar-file">
+                                        <span class="material-icons">upload</span>
+                                        Upload
+                                    </button>
+                                    <button type="button" class="button outlined btn-clear-file" data-input="message-avatar-url" data-file="message-avatar-file" style="display: none;">
+                                        <span class="material-icons">close</span>
+                                    </button>
                                 </div>
                             </div>
                             
@@ -121,13 +122,13 @@
                             
                             <!-- Attachments -->
                             <div class="form-group">
-                                <label>Attachments (optional)</label>
-                                <div class="file-upload-wrapper">
+                                <label>Attachments (optional, max 10)</label>
+                                <div class="input-with-button">
                                     <input type="file" id="message-attachments" accept="image/*" multiple class="file-input">
-                                    <label for="message-attachments" class="file-upload-label">
+                                    <button type="button" class="button outlined btn-file-trigger" data-target="message-attachments" id="btn-add-attachments">
                                         <span class="material-icons">attach_file</span>
-                                        <span>Upload images</span>
-                                    </label>
+                                        Add Images
+                                    </button>
                                 </div>
                                 <div id="attachments-preview" class="attachments-preview"></div>
                             </div>
@@ -222,13 +223,16 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Author Icon</label>
-                                        <input type="url" id="embed-author-icon-url" class="text-input" placeholder="https://example.com/icon.png" style="margin-bottom: 8px;">
-                                        <div class="file-upload-wrapper">
+                                        <div class="input-with-button">
+                                            <input type="url" id="embed-author-icon-url" class="text-input" placeholder="https://example.com/icon.png" readonly>
                                             <input type="file" id="embed-author-icon-file" accept="image/*" class="file-input">
-                                            <label for="embed-author-icon-file" class="file-upload-label">
-                                                <span class="material-icons">upload_file</span>
-                                                <span>Or upload icon</span>
-                                            </label>
+                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-author-icon-file">
+                                                <span class="material-icons">upload</span>
+                                                Upload
+                                            </button>
+                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-author-icon-url" data-file="embed-author-icon-file" style="display: none;">
+                                                <span class="material-icons">close</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -262,24 +266,30 @@
                                 <div class="tab-panel" data-panel="images">
                                     <div class="form-group">
                                         <label>Main Image</label>
-                                        <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png" style="margin-bottom: 8px;">
-                                        <div class="file-upload-wrapper">
+                                        <div class="input-with-button">
+                                            <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png" readonly>
                                             <input type="file" id="embed-image-file" accept="image/*" class="file-input">
-                                            <label for="embed-image-file" class="file-upload-label">
-                                                <span class="material-icons">upload_file</span>
-                                                <span>Or upload image</span>
-                                            </label>
+                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-image-file">
+                                                <span class="material-icons">upload</span>
+                                                Upload
+                                            </button>
+                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-image-url" data-file="embed-image-file" style="display: none;">
+                                                <span class="material-icons">close</span>
+                                            </button>
                                         </div>
                                     </div>
                                     <div class="form-group">
                                         <label>Thumbnail</label>
-                                        <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png" style="margin-bottom: 8px;">
-                                        <div class="file-upload-wrapper">
+                                        <div class="input-with-button">
+                                            <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png" readonly>
                                             <input type="file" id="embed-thumbnail-file" accept="image/*" class="file-input">
-                                            <label for="embed-thumbnail-file" class="file-upload-label">
-                                                <span class="material-icons">upload_file</span>
-                                                <span>Or upload thumbnail</span>
-                                            </label>
+                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-thumbnail-file">
+                                                <span class="material-icons">upload</span>
+                                                Upload
+                                            </button>
+                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-thumbnail-url" data-file="embed-thumbnail-file" style="display: none;">
+                                                <span class="material-icons">close</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -292,13 +302,16 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Footer Icon</label>
-                                        <input type="url" id="embed-footer-icon-url" class="text-input" placeholder="https://example.com/icon.png" style="margin-bottom: 8px;">
-                                        <div class="file-upload-wrapper">
+                                        <div class="input-with-button">
+                                            <input type="url" id="embed-footer-icon-url" class="text-input" placeholder="https://example.com/icon.png" readonly>
                                             <input type="file" id="embed-footer-icon-file" accept="image/*" class="file-input">
-                                            <label for="embed-footer-icon-file" class="file-upload-label">
-                                                <span class="material-icons">upload_file</span>
-                                                <span>Or upload icon</span>
-                                            </label>
+                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-footer-icon-file">
+                                                <span class="material-icons">upload</span>
+                                                Upload
+                                            </button>
+                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-footer-icon-url" data-file="embed-footer-icon-file" style="display: none;">
+                                                <span class="material-icons">close</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
