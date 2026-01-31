@@ -85,6 +85,40 @@ class WebhookManager {
     }
 
     /**
+     * Refresh webhook data from Discord
+     * @param {string} id - Webhook ID
+     * @returns {Promise<Object>} Updated webhook data
+     */
+    async refreshWebhook(id) {
+        const webhook = this.getWebhook(id);
+        if (!webhook) {
+            throw new Error('Webhook not found');
+        }
+
+        try {
+            const response = await fetch(webhook.url);
+            if (!response.ok) {
+                throw new Error('Failed to fetch webhook data');
+            }
+
+            const data = await response.json();
+            
+            // Update local data
+            webhook.name = data.name || 'Unknown Webhook';
+            webhook.avatar = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : this.getDefaultAvatar();
+            webhook.token = data.token;
+            webhook.channelId = data.channel_id;
+            webhook.guildId = data.guild_id;
+            webhook.metadata = data;
+            
+            this.saveWebhooks();
+            return webhook;
+        } catch (error) {
+            throw new Error('Failed to refresh webhook: ' + error.message);
+        }
+    }
+
+    /**
      * Check webhook status
      * @param {string} url - Discord webhook URL
      * @returns {Promise<Object>} Status data
@@ -125,58 +159,6 @@ class WebhookManager {
     }
 
     /**
-     * Impersonate user by ID
-     * @param {string} webhookId - Webhook ID
-     * @param {string} userId - Discord User ID
-     * @returns {Promise<Object>} User data
-     */
-    async impersonateUser(webhookId, userId) {
-        const webhook = this.getWebhook(webhookId);
-        if (!webhook) {
-            throw new Error('Webhook not found');
-        }
-
-        if (!userId || !/^\d{17,19}$/.test(userId)) {
-            throw new Error('Invalid User ID');
-        }
-
-        try {
-            // Try to fetch user info via Discord CDN (doesn't require auth)
-            // We'll construct avatar URL and use a test message
-            const testAvatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userId) % 5}.png`;
-            
-            // Test by sending a message to see if we can get user data
-            const response = await fetch(webhook.url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    content: `<@${userId}>`,
-                    allowed_mentions: { users: [] } // Don't actually mention
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to test user ID');
-            }
-
-            // Since we can't directly fetch user data without bot token,
-            // we'll use the default Discord avatar
-            const avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userId) % 5}.png`;
-            
-            return {
-                userId: userId,
-                username: `User ${userId}`,
-                avatar: avatarUrl,
-                note: 'Avatar is Discord default. Webhook will use actual user data when impersonating.'
-            };
-        } catch (error) {
-            throw new Error('Failed to impersonate: ' + error.message);
-        }
-    }
-
-    /**
      * Format snowflake ID to date
      * @param {string} snowflake - Discord snowflake ID
      * @returns {string} Formatted date
@@ -194,7 +176,7 @@ class WebhookManager {
     }
 
     /**
-     * Remove a webhook
+     * Remove a webhook from panel only
      * @param {string} id - Webhook ID
      */
     removeWebhook(id) {
@@ -253,17 +235,17 @@ class WebhookManager {
     /**
      * Send a message through webhook
      * @param {string} id - Webhook ID
-     * @param {string} content - Message content
+     * @param {Object} payload - Message payload
      * @returns {Promise<void>}
      */
-    async sendMessage(id, content) {
+    async sendMessage(id, payload) {
         const webhook = this.getWebhook(id);
         if (!webhook) {
             throw new Error('Webhook not found');
         }
 
-        if (!content || content.trim().length === 0) {
-            throw new Error('Message content cannot be empty');
+        if (!payload.content && !payload.embeds) {
+            throw new Error('Message must have content or embeds');
         }
 
         try {
@@ -272,11 +254,12 @@ class WebhookManager {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ content })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
-                throw new Error('Failed to send message');
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to send message');
             }
         } catch (error) {
             throw new Error('Failed to send message: ' + error.message);
@@ -400,7 +383,6 @@ function renderWebhooks() {
 function createWebhookCard(webhook) {
     const card = document.createElement('div');
     card.className = 'webhook-card';
-    card.onclick = () => showWebhookDetail(webhook.id);
     
     const avatar = document.createElement('img');
     avatar.className = 'webhook-avatar';
@@ -409,6 +391,7 @@ function createWebhookCard(webhook) {
     
     const info = document.createElement('div');
     info.className = 'webhook-card-info';
+    info.onclick = () => showWebhookDetail(webhook.id);
     
     const name = document.createElement('div');
     name.className = 'webhook-card-name';
@@ -418,10 +401,26 @@ function createWebhookCard(webhook) {
     token.className = 'webhook-card-token';
     token.textContent = maskToken(webhook.token);
     
+    const refreshBtn = document.createElement('button');
+    refreshBtn.className = 'icon-button';
+    refreshBtn.title = 'Refresh';
+    refreshBtn.innerHTML = '<span class="material-icons">refresh</span>';
+    refreshBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+            await manager.refreshWebhook(webhook.id);
+            renderWebhooks();
+            showSnackbar('Webhook refreshed');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    };
+    
     info.appendChild(name);
     info.appendChild(token);
     card.appendChild(avatar);
     card.appendChild(info);
+    card.appendChild(refreshBtn);
     
     return card;
 }
@@ -442,10 +441,16 @@ function showWebhookDetail(id) {
     // Update UI
     document.getElementById('detail-avatar').src = webhook.avatar;
     document.getElementById('detail-name').textContent = webhook.name;
-    document.getElementById('detail-token').textContent = '•'.repeat(16);
+    document.getElementById('detail-token').textContent = maskToken(webhook.token);
     document.getElementById('edit-name').value = webhook.name;
-    document.getElementById('edit-avatar').value = webhook.avatar !== manager.getDefaultAvatar() ? webhook.avatar : '';
+    document.getElementById('message-username').value = '';
+    document.getElementById('message-avatar').value = '';
     document.getElementById('message-content').value = '';
+    document.getElementById('message-tts').checked = false;
+    document.getElementById('embed-title').value = '';
+    document.getElementById('embed-description').value = '';
+    document.getElementById('embed-color').value = '#2196F3';
+    document.getElementById('embed-url').value = '';
     document.getElementById('webhook-metadata').textContent = JSON.stringify(webhook.metadata, null, 2);
     
     switchView('detail-view');
@@ -457,8 +462,8 @@ function showWebhookDetail(id) {
  * @returns {string} Masked token
  */
 function maskToken(token) {
-    if (!token || token.length < 8) return '•'.repeat(16);
-    return token.substring(0, 4) + '•'.repeat(8) + token.substring(token.length - 4);
+    if (!token || token.length < 8) return '••••••••••••••••';
+    return token.substring(0, 4) + '••••••••' + token.substring(token.length - 4);
 }
 
 /**
@@ -512,6 +517,14 @@ document.getElementById('check-status-button').addEventListener('click', async (
     }
 });
 
+// Refresh status
+document.getElementById('refresh-status-button').addEventListener('click', async () => {
+    const url = document.getElementById('webhook-status-input').value.trim();
+    if (url) {
+        document.getElementById('check-status-button').click();
+    }
+});
+
 // Add Webhook
 document.getElementById('add-webhook-fab').addEventListener('click', () => {
     document.getElementById('webhook-url-input').value = '';
@@ -546,6 +559,33 @@ document.getElementById('back-button').addEventListener('click', () => {
     manager.currentWebhook = null;
 });
 
+// Refresh webhook
+document.getElementById('refresh-webhook-button').addEventListener('click', async () => {
+    if (!manager.currentWebhook) return;
+    
+    try {
+        await manager.refreshWebhook(manager.currentWebhook.id);
+        showWebhookDetail(manager.currentWebhook.id);
+        renderWebhooks();
+        showSnackbar('Webhook refreshed from Discord');
+    } catch (error) {
+        showSnackbar(error.message);
+    }
+});
+
+// Refresh metadata
+document.getElementById('refresh-metadata-button').addEventListener('click', async () => {
+    if (!manager.currentWebhook) return;
+    
+    try {
+        await manager.refreshWebhook(manager.currentWebhook.id);
+        document.getElementById('webhook-metadata').textContent = JSON.stringify(manager.currentWebhook.metadata, null, 2);
+        showSnackbar('Metadata refreshed');
+    } catch (error) {
+        showSnackbar(error.message);
+    }
+});
+
 // Copy Token
 document.getElementById('copy-token-button').addEventListener('click', async () => {
     if (!manager.currentWebhook) return;
@@ -558,46 +598,11 @@ document.getElementById('copy-token-button').addEventListener('click', async () 
     }
 });
 
-// Identity Impersonation
-document.getElementById('impersonate-button').addEventListener('click', () => {
-    document.getElementById('user-id-input').value = '';
-    showDialog('impersonate-dialog');
-});
-
-document.getElementById('cancel-impersonate-button').addEventListener('click', () => {
-    hideDialog('impersonate-dialog');
-});
-
-document.getElementById('confirm-impersonate-button').addEventListener('click', async () => {
-    if (!manager.currentWebhook) return;
-    
-    const userId = document.getElementById('user-id-input').value.trim();
-    
-    if (!userId) {
-        showSnackbar('Please enter a User ID');
-        return;
-    }
-    
-    try {
-        const userData = await manager.impersonateUser(manager.currentWebhook.id, userId);
-        
-        // Update webhook to use user's identity
-        document.getElementById('edit-name').value = userData.username;
-        document.getElementById('edit-avatar').value = userData.avatar;
-        
-        hideDialog('impersonate-dialog');
-        showSnackbar('Identity copied! Click Save Changes to apply');
-    } catch (error) {
-        showSnackbar(error.message);
-    }
-});
-
 // Save Changes
 document.getElementById('save-changes-button').addEventListener('click', async () => {
     if (!manager.currentWebhook) return;
     
     const name = document.getElementById('edit-name').value.trim();
-    const avatar = document.getElementById('edit-avatar').value.trim();
     
     if (!name) {
         showSnackbar('Name cannot be empty');
@@ -605,12 +610,7 @@ document.getElementById('save-changes-button').addEventListener('click', async (
     }
     
     try {
-        const updates = { name };
-        if (avatar) {
-            updates.avatar = avatar;
-        }
-        
-        await manager.updateWebhook(manager.currentWebhook.id, updates);
+        await manager.updateWebhook(manager.currentWebhook.id, { name });
         showSnackbar('Webhook updated successfully');
         
         // Refresh detail view
@@ -626,16 +626,60 @@ document.getElementById('send-message-button').addEventListener('click', async (
     if (!manager.currentWebhook) return;
     
     const content = document.getElementById('message-content').value.trim();
+    const username = document.getElementById('message-username').value.trim();
+    const avatarUrl = document.getElementById('message-avatar').value.trim();
+    const tts = document.getElementById('message-tts').checked;
     
     if (!content) {
         showSnackbar('Message cannot be empty');
         return;
     }
     
+    const payload = { content, tts };
+    if (username) payload.username = username;
+    if (avatarUrl) payload.avatar_url = avatarUrl;
+    
     try {
-        await manager.sendMessage(manager.currentWebhook.id, content);
+        await manager.sendMessage(manager.currentWebhook.id, payload);
         document.getElementById('message-content').value = '';
         showSnackbar('Message sent successfully');
+    } catch (error) {
+        showSnackbar(error.message);
+    }
+});
+
+// Send Embed
+document.getElementById('send-embed-button').addEventListener('click', async () => {
+    if (!manager.currentWebhook) return;
+    
+    const title = document.getElementById('embed-title').value.trim();
+    const description = document.getElementById('embed-description').value.trim();
+    const colorHex = document.getElementById('embed-color').value.trim();
+    const url = document.getElementById('embed-url').value.trim();
+    
+    if (!title && !description) {
+        showSnackbar('Embed must have title or description');
+        return;
+    }
+    
+    const embed = {};
+    if (title) embed.title = title;
+    if (description) embed.description = description;
+    if (url) embed.url = url;
+    
+    // Convert hex to decimal
+    if (colorHex) {
+        const color = parseInt(colorHex.replace('#', ''), 16);
+        embed.color = color;
+    }
+    
+    const payload = { embeds: [embed] };
+    
+    try {
+        await manager.sendMessage(manager.currentWebhook.id, payload);
+        document.getElementById('embed-title').value = '';
+        document.getElementById('embed-description').value = '';
+        showSnackbar('Embed sent successfully');
     } catch (error) {
         showSnackbar(error.message);
     }
@@ -681,7 +725,7 @@ document.getElementById('confirm-spam-button').addEventListener('click', async (
     let sent = 0;
     for (let i = 0; i < count; i++) {
         try {
-            await manager.sendMessage(manager.currentWebhook.id, message);
+            await manager.sendMessage(manager.currentWebhook.id, { content: message });
             sent++;
             showSnackbar(`Sent ${sent}/${count} messages`);
             
@@ -699,37 +743,61 @@ document.getElementById('confirm-spam-button').addEventListener('click', async (
     }
 });
 
-// Delete Webhook
+// Remove from Panel
+document.getElementById('remove-webhook-button').addEventListener('click', () => {
+    if (!manager.currentWebhook) return;
+    
+    document.getElementById('confirm-title').textContent = 'Remove from Panel';
+    document.getElementById('confirm-message').textContent = 
+        `Remove "${manager.currentWebhook.name}" from this panel? The webhook will still exist on Discord.`;
+    
+    showDialog('confirm-dialog');
+    
+    // Set action for remove
+    document.getElementById('confirm-action-button').onclick = async () => {
+        if (!manager.currentWebhook) return;
+        const webhookId = manager.currentWebhook.id;
+        
+        manager.removeWebhook(webhookId);
+        hideDialog('confirm-dialog');
+        switchView('dashboard-view');
+        renderWebhooks();
+        showSnackbar('Webhook removed from panel');
+        manager.currentWebhook = null;
+    };
+});
+
+// Delete Webhook from Discord
 document.getElementById('delete-webhook-button').addEventListener('click', () => {
     if (!manager.currentWebhook) return;
     
-    document.getElementById('confirm-title').textContent = 'Delete Webhook';
+    document.getElementById('confirm-title').textContent = 'Delete from Discord';
     document.getElementById('confirm-message').textContent = 
-        `Are you sure you want to delete "${manager.currentWebhook.name}"? This action cannot be undone and will delete the webhook from Discord.`;
+        `Permanently delete "${manager.currentWebhook.name}" from Discord? This action cannot be undone!`;
     
     showDialog('confirm-dialog');
+    
+    // Set action for delete
+    document.getElementById('confirm-action-button').onclick = async () => {
+        if (!manager.currentWebhook) return;
+        const webhookId = manager.currentWebhook.id;
+        
+        try {
+            await manager.deleteWebhookFromDiscord(webhookId);
+            hideDialog('confirm-dialog');
+            switchView('dashboard-view');
+            renderWebhooks();
+            showSnackbar('Webhook deleted from Discord');
+            manager.currentWebhook = null;
+        } catch (error) {
+            hideDialog('confirm-dialog');
+            showSnackbar(error.message);
+        }
+    };
 });
 
 document.getElementById('cancel-confirm-button').addEventListener('click', () => {
     hideDialog('confirm-dialog');
-});
-
-document.getElementById('confirm-action-button').addEventListener('click', async () => {
-    if (!manager.currentWebhook) return;
-    
-    const webhookId = manager.currentWebhook.id;
-    
-    try {
-        await manager.deleteWebhookFromDiscord(webhookId);
-        hideDialog('confirm-dialog');
-        switchView('dashboard-view');
-        renderWebhooks();
-        showSnackbar('Webhook deleted successfully');
-        manager.currentWebhook = null;
-    } catch (error) {
-        hideDialog('confirm-dialog');
-        showSnackbar(error.message);
-    }
 });
 
 // Theme Picker

@@ -49,7 +49,12 @@
                         <div class="status-card">
                             <img id="status-avatar" class="webhook-avatar-large" src="" alt="Webhook Avatar">
                             <div class="status-info">
-                                <h4 id="status-name">Webhook Name</h4>
+                                <div class="status-header">
+                                    <h4 id="status-name">Webhook Name</h4>
+                                    <button class="icon-button" id="refresh-status-button" title="Refresh">
+                                        <span class="material-icons">refresh</span>
+                                    </button>
+                                </div>
                                 <p id="status-date" class="status-meta">Created: Unknown</p>
                                 <span id="status-badge" class="status-badge"></span>
                             </div>
@@ -82,7 +87,12 @@
                         <div class="webhook-header">
                             <img id="detail-avatar" class="webhook-avatar-large" src="" alt="Webhook Avatar">
                             <div class="webhook-info">
-                                <h2 id="detail-name">Webhook Name</h2>
+                                <div class="webhook-title-row">
+                                    <h2 id="detail-name">Webhook Name</h2>
+                                    <button class="icon-button" id="refresh-webhook-button" title="Refresh from Discord">
+                                        <span class="material-icons">refresh</span>
+                                    </button>
+                                </div>
                                 <div class="token-display">
                                     <code id="detail-token">••••••••••••••••</code>
                                     <button class="icon-button" id="copy-token-button" title="Copy Token">
@@ -99,10 +109,6 @@
                                 <label for="edit-name">Webhook Name</label>
                                 <input type="text" id="edit-name" class="text-input" placeholder="Enter webhook name">
                             </div>
-                            <div class="form-group">
-                                <label for="edit-avatar">Avatar URL</label>
-                                <input type="url" id="edit-avatar" class="text-input" placeholder="https://example.com/avatar.png">
-                            </div>
                             <button class="button primary" id="save-changes-button">
                                 <span class="material-icons">save</span>
                                 Save Changes
@@ -113,8 +119,22 @@
                         <section class="detail-section">
                             <h3>Send Message</h3>
                             <div class="form-group">
+                                <label for="message-username">Username (optional)</label>
+                                <input type="text" id="message-username" class="text-input" placeholder="Custom username">
+                            </div>
+                            <div class="form-group">
+                                <label for="message-avatar">Avatar URL (optional)</label>
+                                <input type="url" id="message-avatar" class="text-input" placeholder="https://example.com/avatar.png">
+                            </div>
+                            <div class="form-group">
                                 <label for="message-content">Message</label>
                                 <textarea id="message-content" class="text-input" rows="4" placeholder="Enter your message"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="message-tts">
+                                    <input type="checkbox" id="message-tts">
+                                    Text-to-Speech (TTS)
+                                </label>
                             </div>
                             <button class="button primary" id="send-message-button">
                                 <span class="material-icons">send</span>
@@ -122,20 +142,34 @@
                             </button>
                         </section>
 
+                        <!-- Embeds Section -->
+                        <section class="detail-section">
+                            <h3>Send Embed</h3>
+                            <div class="form-group">
+                                <label for="embed-title">Embed Title</label>
+                                <input type="text" id="embed-title" class="text-input" placeholder="Title">
+                            </div>
+                            <div class="form-group">
+                                <label for="embed-description">Description</label>
+                                <textarea id="embed-description" class="text-input" rows="3" placeholder="Description"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="embed-color">Color (Hex)</label>
+                                <input type="text" id="embed-color" class="text-input" placeholder="#2196F3" value="#2196F3">
+                            </div>
+                            <div class="form-group">
+                                <label for="embed-url">URL (optional)</label>
+                                <input type="url" id="embed-url" class="text-input" placeholder="https://example.com">
+                            </div>
+                            <button class="button primary" id="send-embed-button">
+                                <span class="material-icons">article</span>
+                                Send Embed
+                            </button>
+                        </section>
+
                         <!-- Danger Zone -->
                         <section class="detail-section danger-zone">
                             <h3>Danger Zone</h3>
-                            
-                            <div class="danger-item">
-                                <div>
-                                    <h4>Identity Impersonation</h4>
-                                    <p>Copy user's avatar and display name by User ID</p>
-                                </div>
-                                <button class="button outlined" id="impersonate-button">
-                                    <span class="material-icons">person</span>
-                                    Impersonate
-                                </button>
-                            </div>
 
                             <div class="danger-item">
                                 <div>
@@ -150,19 +184,35 @@
 
                             <div class="danger-item">
                                 <div>
-                                    <h4>Delete Webhook</h4>
-                                    <p>Permanently remove this webhook from Discord</p>
+                                    <h4>Remove from Panel</h4>
+                                    <p>Remove webhook from this panel (doesn't delete from Discord)</p>
+                                </div>
+                                <button class="button danger" id="remove-webhook-button">
+                                    <span class="material-icons">remove_circle</span>
+                                    Remove
+                                </button>
+                            </div>
+
+                            <div class="danger-item">
+                                <div>
+                                    <h4>Delete from Discord</h4>
+                                    <p>Permanently delete this webhook from Discord server</p>
                                 </div>
                                 <button class="button danger" id="delete-webhook-button">
                                     <span class="material-icons">delete</span>
-                                    Delete
+                                    Delete Forever
                                 </button>
                             </div>
                         </section>
 
                         <!-- Webhook Metadata -->
                         <section class="detail-section">
-                            <h3>Webhook Data</h3>
+                            <div class="section-header">
+                                <h3>Webhook Data</h3>
+                                <button class="icon-button" id="refresh-metadata-button" title="Refresh Data">
+                                    <span class="material-icons">refresh</span>
+                                </button>
+                            </div>
                             <div class="metadata-container">
                                 <pre id="webhook-metadata"></pre>
                             </div>
@@ -184,23 +234,6 @@
             <div class="dialog-actions">
                 <button class="button text" id="cancel-add-button">Cancel</button>
                 <button class="button primary" id="confirm-add-button">Add</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Identity Impersonation Dialog -->
-    <div id="impersonate-dialog" class="dialog-overlay">
-        <div class="dialog">
-            <h2>Identity Impersonation</h2>
-            <p class="dialog-description">Enter Discord User ID to copy their profile</p>
-            <div class="form-group">
-                <label for="user-id-input">User ID</label>
-                <input type="text" id="user-id-input" class="text-input" placeholder="123456789012345678">
-                <p class="input-hint">Enable Developer Mode in Discord to copy User IDs</p>
-            </div>
-            <div class="dialog-actions">
-                <button class="button text" id="cancel-impersonate-button">Cancel</button>
-                <button class="button primary" id="confirm-impersonate-button">Copy Identity</button>
             </div>
         </div>
     </div>
