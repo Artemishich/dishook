@@ -98,38 +98,45 @@
                                 <label for="message-username">Username (optional)</label>
                                 <input type="text" id="message-username" class="text-input" placeholder="Custom username">
                             </div>
+                            
+                            <!-- Avatar with Upload/URL -->
                             <div class="form-group">
-                                <label for="message-avatar">Avatar URL (optional)</label>
-                                <input type="url" id="message-avatar" class="text-input" placeholder="https://example.com/avatar.png">
+                                <label>Avatar (optional)</label>
+                                <div class="image-input-group">
+                                    <input type="url" id="message-avatar-url" class="text-input" placeholder="https://example.com/avatar.png" style="margin-bottom: 8px;">
+                                    <div class="file-upload-wrapper">
+                                        <input type="file" id="message-avatar-file" accept="image/*" class="file-input">
+                                        <label for="message-avatar-file" class="file-upload-label">
+                                            <span class="material-icons">upload_file</span>
+                                            <span>Or upload image</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
+                            
                             <div class="form-group">
                                 <label for="message-content">Message</label>
                                 <textarea id="message-content" class="text-input" rows="4" placeholder="Enter your message"></textarea>
                             </div>
+                            
+                            <!-- Attachments -->
+                            <div class="form-group">
+                                <label>Attachments (optional)</label>
+                                <div class="file-upload-wrapper">
+                                    <input type="file" id="message-attachments" accept="image/*" multiple class="file-input">
+                                    <label for="message-attachments" class="file-upload-label">
+                                        <span class="material-icons">attach_file</span>
+                                        <span>Upload images</span>
+                                    </label>
+                                </div>
+                                <div id="attachments-preview" class="attachments-preview"></div>
+                            </div>
+                            
                             <div class="form-group">
                                 <label for="message-tts">
                                     <input type="checkbox" id="message-tts">
                                     Text-to-Speech (TTS)
                                 </label>
-                            </div>
-                            
-                            <!-- Allowed Mentions -->
-                            <div class="form-group">
-                                <label>Allowed Mentions</label>
-                                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-                                    <label style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="checkbox" id="mention-everyone" checked>
-                                        <span>@everyone and @here</span>
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="checkbox" id="mention-users" checked>
-                                        <span>Users (@user)</span>
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="checkbox" id="mention-roles" checked>
-                                        <span>Roles (@role)</span>
-                                    </label>
-                                </div>
                             </div>
                             
                             <button class="button primary" id="send-message-button">
@@ -138,120 +145,169 @@
                             </button>
                         </section>
 
-                        <!-- Embeds Section -->
+                        <!-- Embeds Section with Tabs -->
                         <section class="detail-section">
                             <h3>Send Embed</h3>
                             
-                            <!-- Embed Preview -->
+                            <!-- Embed Preview (Always visible at top) -->
                             <div class="form-group">
                                 <label>Preview</label>
-                                <div id="embed-preview" style="min-height: 100px; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
-                                    <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 16px;">Fill in some fields to see preview</p>
+                                <div id="embed-preview" class="embed-preview-container">
+                                    <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">Fill in some fields to see preview</p>
                                 </div>
                             </div>
                             
-                            <!-- Main Embed Fields -->
-                            <div class="form-group">
-                                <label for="embed-title">Embed Title</label>
-                                <input type="text" id="embed-title" class="text-input" placeholder="Title">
-                            </div>
-                            <div class="form-group">
-                                <label for="embed-description">Description</label>
-                                <textarea id="embed-description" class="text-input" rows="3" placeholder="Description"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label for="embed-url">Title URL (optional)</label>
-                                <input type="url" id="embed-url" class="text-input" placeholder="https://example.com">
-                            </div>
-                            <div class="form-group">
-                                <label for="embed-color">Color (Hex)</label>
-                                <input type="text" id="embed-color" class="text-input" placeholder="#2196F3" value="#2196F3">
+                            <!-- Tabs -->
+                            <div class="tabs">
+                                <button class="tab active" data-tab="basic">Basic</button>
+                                <button class="tab" data-tab="author">Author</button>
+                                <button class="tab" data-tab="fields">Fields</button>
+                                <button class="tab" data-tab="images">Images</button>
+                                <button class="tab" data-tab="footer">Footer</button>
                             </div>
                             
-                            <!-- Author Section -->
-                            <div class="form-subsection">
-                                <h4>Author (optional)</h4>
-                                <div class="form-group">
-                                    <label for="embed-author-name">Author Name</label>
-                                    <input type="text" id="embed-author-name" class="text-input" placeholder="Author name">
+                            <!-- Tab Content -->
+                            <div class="tab-content">
+                                <!-- Basic Tab -->
+                                <div class="tab-panel active" data-panel="basic">
+                                    <div class="form-group">
+                                        <label for="embed-title">Title</label>
+                                        <input type="text" id="embed-title" class="text-input" placeholder="Embed title">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="embed-description">Description</label>
+                                        <textarea id="embed-description" class="text-input" rows="4" placeholder="Embed description"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="embed-url">Title URL (optional)</label>
+                                        <input type="url" id="embed-url" class="text-input" placeholder="https://example.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Color</label>
+                                        <div class="color-palette">
+                                            <button class="color-swatch" data-color="#1ABC9C" style="background-color: #1ABC9C;" title="Turquoise"></button>
+                                            <button class="color-swatch" data-color="#2ECC71" style="background-color: #2ECC71;" title="Emerald"></button>
+                                            <button class="color-swatch" data-color="#3498DB" style="background-color: #3498DB;" title="Peter River"></button>
+                                            <button class="color-swatch" data-color="#9B59B6" style="background-color: #9B59B6;" title="Amethyst"></button>
+                                            <button class="color-swatch" data-color="#E91E63" style="background-color: #E91E63;" title="Pink"></button>
+                                            <button class="color-swatch" data-color="#F1C40F" style="background-color: #F1C40F;" title="Sun Flower"></button>
+                                            <button class="color-swatch" data-color="#E67E22" style="background-color: #E67E22;" title="Carrot"></button>
+                                            <button class="color-swatch" data-color="#E74C3C" style="background-color: #E74C3C;" title="Alizarin"></button>
+                                            <button class="color-swatch" data-color="#95A5A6" style="background-color: #95A5A6;" title="Concrete"></button>
+                                            <button class="color-swatch" data-color="#607D8B" style="background-color: #607D8B;" title="Blue Grey"></button>
+                                            <button class="color-swatch" data-color="#11806A" style="background-color: #11806A;" title="Dark Aqua"></button>
+                                            <button class="color-swatch" data-color="#1F8B4C" style="background-color: #1F8B4C;" title="Dark Green"></button>
+                                            <button class="color-swatch selected" data-color="#2196F3" style="background-color: #2196F3;" title="Blue"></button>
+                                            <button class="color-swatch" data-color="#71368A" style="background-color: #71368A;" title="Dark Purple"></button>
+                                            <button class="color-swatch" data-color="#AD1457" style="background-color: #AD1457;" title="Magenta"></button>
+                                            <button class="color-swatch" data-color="#C27C0E" style="background-color: #C27C0E;" title="Gold"></button>
+                                            <button class="color-swatch" data-color="#A84300" style="background-color: #A84300;" title="Dark Orange"></button>
+                                            <button class="color-swatch" data-color="#992D22" style="background-color: #992D22;" title="Dark Red"></button>
+                                            <button class="color-swatch" data-color="#979C9F" style="background-color: #979C9F;" title="Light Grey"></button>
+                                            <button class="color-swatch" data-color="#7289DA" style="background-color: #7289DA;" title="Blurple"></button>
+                                        </div>
+                                        <input type="text" id="embed-color" class="text-input" value="#2196F3" placeholder="#2196F3" style="margin-top: 12px;">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="embed-author-url">Author URL</label>
-                                    <input type="url" id="embed-author-url" class="text-input" placeholder="https://example.com">
+                                
+                                <!-- Author Tab -->
+                                <div class="tab-panel" data-panel="author">
+                                    <div class="form-group">
+                                        <label for="embed-author-name">Author Name</label>
+                                        <input type="text" id="embed-author-name" class="text-input" placeholder="Author name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="embed-author-url">Author URL (optional)</label>
+                                        <input type="url" id="embed-author-url" class="text-input" placeholder="https://example.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Author Icon</label>
+                                        <input type="url" id="embed-author-icon-url" class="text-input" placeholder="https://example.com/icon.png" style="margin-bottom: 8px;">
+                                        <div class="file-upload-wrapper">
+                                            <input type="file" id="embed-author-icon-file" accept="image/*" class="file-input">
+                                            <label for="embed-author-icon-file" class="file-upload-label">
+                                                <span class="material-icons">upload_file</span>
+                                                <span>Or upload icon</span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="embed-author-icon">Author Icon URL</label>
-                                    <input type="url" id="embed-author-icon" class="text-input" placeholder="https://example.com/icon.png">
+                                
+                                <!-- Fields Tab -->
+                                <div class="tab-panel" data-panel="fields">
+                                    <div class="form-group">
+                                        <label for="field-name">Field Name</label>
+                                        <input type="text" id="field-name" class="text-input" placeholder="Field name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="field-value">Field Value</label>
+                                        <textarea id="field-value" class="text-input" rows="2" placeholder="Field value"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="display: flex; align-items: center; gap: 8px;">
+                                            <input type="checkbox" id="field-inline">
+                                            <span>Inline</span>
+                                        </label>
+                                    </div>
+                                    <button class="button outlined" id="add-field-button" style="margin-bottom: 16px; width: 100%;">
+                                        <span class="material-icons">add</span>
+                                        Add Field
+                                    </button>
+                                    <div id="embed-fields-list">
+                                        <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; text-align: center; padding: 16px;">No fields added yet</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Images Tab -->
+                                <div class="tab-panel" data-panel="images">
+                                    <div class="form-group">
+                                        <label>Main Image</label>
+                                        <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png" style="margin-bottom: 8px;">
+                                        <div class="file-upload-wrapper">
+                                            <input type="file" id="embed-image-file" accept="image/*" class="file-input">
+                                            <label for="embed-image-file" class="file-upload-label">
+                                                <span class="material-icons">upload_file</span>
+                                                <span>Or upload image</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Thumbnail</label>
+                                        <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png" style="margin-bottom: 8px;">
+                                        <div class="file-upload-wrapper">
+                                            <input type="file" id="embed-thumbnail-file" accept="image/*" class="file-input">
+                                            <label for="embed-thumbnail-file" class="file-upload-label">
+                                                <span class="material-icons">upload_file</span>
+                                                <span>Or upload thumbnail</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Footer Tab -->
+                                <div class="tab-panel" data-panel="footer">
+                                    <div class="form-group">
+                                        <label for="embed-footer-text">Footer Text</label>
+                                        <input type="text" id="embed-footer-text" class="text-input" placeholder="Footer text">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Footer Icon</label>
+                                        <input type="url" id="embed-footer-icon-url" class="text-input" placeholder="https://example.com/icon.png" style="margin-bottom: 8px;">
+                                        <div class="file-upload-wrapper">
+                                            <input type="file" id="embed-footer-icon-file" accept="image/*" class="file-input">
+                                            <label for="embed-footer-icon-file" class="file-upload-label">
+                                                <span class="material-icons">upload_file</span>
+                                                <span>Or upload icon</span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <!-- Fields Section -->
-                            <div class="form-subsection">
-                                <h4>Fields (up to 25)</h4>
-                                <div class="form-group">
-                                    <label for="field-name">Field Name</label>
-                                    <input type="text" id="field-name" class="text-input" placeholder="Field name">
-                                </div>
-                                <div class="form-group">
-                                    <label for="field-value">Field Value</label>
-                                    <textarea id="field-value" class="text-input" rows="2" placeholder="Field value"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="checkbox" id="field-inline">
-                                        <span>Inline</span>
-                                    </label>
-                                </div>
-                                <button class="button outlined" id="add-field-button" style="margin-bottom: 12px;">
-                                    <span class="material-icons">add</span>
-                                    Add Field
-                                </button>
-                                <div id="embed-fields-list" style="margin-top: 12px;">
-                                    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px;">No fields added yet</p>
-                                </div>
-                            </div>
-                            
-                            <!-- Images Section -->
-                            <div class="form-subsection">
-                                <h4>Images (optional)</h4>
-                                <div class="form-group">
-                                    <label for="embed-image-url">Main Image URL</label>
-                                    <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png">
-                                </div>
-                                <div class="form-group">
-                                    <label for="embed-thumbnail-url">Thumbnail URL</label>
-                                    <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png">
-                                </div>
-                            </div>
-                            
-                            <!-- Footer Section -->
-                            <div class="form-subsection">
-                                <h4>Footer (optional)</h4>
-                                <div class="form-group">
-                                    <label for="embed-footer-text">Footer Text</label>
-                                    <input type="text" id="embed-footer-text" class="text-input" placeholder="Footer text">
-                                </div>
-                                <div class="form-group">
-                                    <label for="embed-footer-icon">Footer Icon URL</label>
-                                    <input type="url" id="embed-footer-icon" class="text-input" placeholder="https://example.com/icon.png">
-                                </div>
-                            </div>
-                            
-                            <button class="button primary" id="send-embed-button">
+                            <button class="button primary" id="send-embed-button" style="width: 100%; margin-top: 16px;">
                                 <span class="material-icons">article</span>
                                 Send Embed
                             </button>
-                        </section>
-
-                        <!-- Webhook Capabilities Section -->
-                        <section class="detail-section">
-                            <h3>Webhook Capabilities</h3>
-                            <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px; font-size: 14px;">
-                                Available actions for Discord webhooks.
-                            </p>
-                            <div id="capabilities-list" style="display: flex; flex-direction: column; gap: 16px;">
-                                <!-- Capabilities will be dynamically inserted here -->
-                            </div>
                         </section>
 
                         <!-- Danger Zone -->
