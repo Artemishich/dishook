@@ -202,11 +202,13 @@ class WebhookManager {
 
     /**
      * Validate Discord webhook URL
+     * Supports both discord.com and discordapp.com domains
      * @param {string} url - Webhook URL
      * @returns {boolean} Is valid
      */
     isValidWebhookUrl(url) {
-        const webhookRegex = /^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/;
+        // Support both discord.com and discordapp.com
+        const webhookRegex = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/;
         return webhookRegex.test(url);
     }
 
@@ -587,7 +589,7 @@ document.querySelectorAll('.dialog-overlay').forEach(overlay => {
  * Initialize application
  */
 function init() {
-    // Load theme
+    // Set dark mode by default if no theme is saved
     const savedTheme = localStorage.getItem('dishook_theme');
     if (savedTheme) {
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -596,13 +598,15 @@ function init() {
             option.classList.add('selected');
         }
     } else {
-        document.querySelector('[data-color="blue"]').classList.add('selected');
+        // Default to dark theme
+        document.documentElement.setAttribute('data-color-scheme', 'dark');
+        document.querySelector('[data-color="blue"]')?.classList.add('selected');
     }
     
     // Render initial webhooks
     renderWebhooks();
     
-    console.log('Dishook initialized successfully');
+    console.log('Dishook initialized successfully with dark mode');
 }
 
 // Initialize on DOM ready
