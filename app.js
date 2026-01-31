@@ -45,6 +45,67 @@ class WebhookManager {
     }
 
     /**
+     * Parse mentions from content and create allowed_mentions object
+     * @param {string} content - Message content
+     * @returns {Object} allowed_mentions configuration
+     */
+    parseMentions(content) {
+        if (!content) return null;
+
+        const mentions = {
+            parse: [],
+            users: [],
+            roles: []
+        };
+
+        // Detect @everyone
+        if (content.includes('@everyone')) {
+            mentions.parse.push('everyone');
+        }
+
+        // Detect @here
+        if (content.includes('@here')) {
+            mentions.parse.push('everyone'); // @here uses same permission as @everyone
+        }
+
+        // Detect user mentions: <@123456789>
+        const userMentions = content.match(/<@!?(\d+)>/g);
+        if (userMentions) {
+            mentions.parse.push('users');
+            userMentions.forEach(mention => {
+                const id = mention.match(/\d+/)[0];
+                if (!mentions.users.includes(id)) {
+                    mentions.users.push(id);
+                }
+            });
+        }
+
+        // Detect role mentions: <@&123456789>
+        const roleMentions = content.match(/<@&(\d+)>/g);
+        if (roleMentions) {
+            mentions.parse.push('roles');
+            roleMentions.forEach(mention => {
+                const id = mention.match(/\d+/)[0];
+                if (!mentions.roles.includes(id)) {
+                    mentions.roles.push(id);
+                }
+            });
+        }
+
+        // If no mentions found, return null
+        if (mentions.parse.length === 0 && mentions.users.length === 0 && mentions.roles.length === 0) {
+            return null;
+        }
+
+        // Clean up empty arrays
+        if (mentions.users.length === 0) delete mentions.users;
+        if (mentions.roles.length === 0) delete mentions.roles;
+        if (mentions.parse.length === 0) delete mentions.parse;
+
+        return mentions;
+    }
+
+    /**
      * Add a new webhook
      * @param {string} url - Discord webhook URL
      * @returns {Promise<Object>} Webhook data
@@ -252,6 +313,14 @@ class WebhookManager {
 
         if (!payload.content && !payload.embeds && files.length === 0) {
             throw new Error('Message must have content, embeds, or files');
+        }
+
+        // Automatically detect and add allowed_mentions
+        if (payload.content) {
+            const mentions = this.parseMentions(payload.content);
+            if (mentions) {
+                payload.allowed_mentions = mentions;
+            }
         }
 
         try {
@@ -1469,7 +1538,7 @@ function init() {
     
     renderWebhooks();
     
-    console.log('Dishook initialized - All fixes applied and working');
+    console.log('Dishook initialized with automatic mentions detection');
 }
 
 if (document.readyState === 'loading') {
