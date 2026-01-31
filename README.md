@@ -1,3 +1,6 @@
+# MADE WITH AI ONLY!!!!!
+
+
 # 🪝 Dishook - Discord Webhook Manager
 
 A modern, Material Design 3 web application for managing Discord webhooks with advanced features.
