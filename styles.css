@@ -541,6 +541,31 @@ body {
     color: var(--md-sys-color-on-surface-variant);
 }
 
+/* Capability Item */
+.capability-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px;
+    background-color: var(--md-sys-color-surface-variant);
+    border-radius: 8px;
+    transition: background-color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+
+.capability-item:hover {
+    background-color: var(--md-sys-color-secondary);
+}
+
+.capability-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.capability-info {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Form Elements */
 .form-group {
     margin-bottom: 16px;
