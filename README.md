@@ -21,6 +21,7 @@ Manage, send, and organize your Discord webhooks with a beautiful, intuitive int
 
 ### 🎨 Beautiful Material Design 3 Interface
 - **Modern UI**: Smooth animations and transitions following Material You guidelines
+- **Dark Mode by Default**: Comfortable dark theme that's easy on the eyes
 - **Customizable Themes**: Choose from 8 accent colors (Blue, Red, Green, Purple, Orange, Teal, Pink, Indigo)
 - **Responsive Design**: Works perfectly on desktop, tablet, and mobile devices
 - **Dark/Light Adaptation**: Automatic theme switching based on system preferences
@@ -34,6 +35,7 @@ Manage, send, and organize your Discord webhooks with a beautiful, intuitive int
 
 ### 🔧 Webhook Management
 - **Easy Addition**: Add webhooks via Discord webhook URL
+- **Multiple URL Formats**: Supports both `discord.com` and `discordapp.com` domains
 - **Automatic Validation**: URL format validation before adding
 - **Duplicate Prevention**: Prevents adding the same webhook twice
 - **Real-time Sync**: Fetches live webhook data from Discord API
@@ -62,7 +64,7 @@ Manage, send, and organize your Discord webhooks with a beautiful, intuitive int
 
 ### 🔐 Security Features
 - **Token Masking**: Webhook tokens are never displayed in full
-- **URL Validation**: Strict validation of Discord webhook URLs
+- **URL Validation**: Strict validation of Discord webhook URLs (supports both discord.com and discordapp.com)
 - **HTTPS Only**: Enforces secure connections to Discord API
 - **Error Handling**: Comprehensive error catching and user-friendly messages
 
@@ -73,15 +75,15 @@ Manage, send, and organize your Discord webhooks with a beautiful, intuitive int
 ### Screenshots
 
 #### Dashboard View
-![Dashboard](https://via.placeholder.com/800x450/2196F3/FFFFFF?text=Dashboard+View)
-*Clean, organized webhook dashboard with Material Design cards*
+![Dashboard](https://via.placeholder.com/800x450/1C1B1F/E0E0E0?text=Dashboard+View+-+Dark+Mode)
+*Clean, organized webhook dashboard with Material Design cards in dark mode*
 
 #### Webhook Detail
-![Detail View](https://via.placeholder.com/800x450/2196F3/FFFFFF?text=Webhook+Detail+View)
+![Detail View](https://via.placeholder.com/800x450/1C1B1F/E0E0E0?text=Webhook+Detail+View+-+Dark+Mode)
 *Comprehensive webhook management interface*
 
 #### Theme Customization
-![Themes](https://via.placeholder.com/800x450/2196F3/FFFFFF?text=Theme+Customization)
+![Themes](https://via.placeholder.com/800x450/1C1B1F/E0E0E0?text=Theme+Customization)
 *Choose from 8 beautiful accent colors*
 
 ### Live Demo
@@ -139,9 +141,13 @@ python -m http.server 8000
    - Go to your Discord server
    - Navigate to Server Settings → Integrations → Webhooks
    - Create a new webhook or copy existing one
-   - Copy the webhook URL (format: `https://discord.com/api/webhooks/ID/TOKEN`)
+   - Copy the webhook URL
 
-2. **Add to Dishook**:
+2. **Supported URL Formats**:
+   - `https://discord.com/api/webhooks/ID/TOKEN` ✅
+   - `https://discordapp.com/api/webhooks/ID/TOKEN` ✅
+
+3. **Add to Dishook**:
    - Click the **+** (Add) button in the top right
    - Paste your webhook URL
    - Click "Add"
@@ -206,6 +212,7 @@ python -m http.server 8000
 - **Material Design 3 (Material You)**: Latest Google design guidelines
 - **Google Material Icons**: Comprehensive icon set
 - **Roboto Font**: Official Material Design typography
+- **Dark Mode**: Default dark theme for comfortable viewing
 
 ### Browser Support
 - ✅ Chrome/Edge 90+
@@ -239,10 +246,12 @@ Core class for managing webhooks.
 #### Methods
 
 ##### `addWebhook(url: string): Promise<Object>`
-Adds a new webhook by URL.
+Adds a new webhook by URL. Supports both `discord.com` and `discordapp.com` domains.
 
 ```javascript
-const webhook = await manager.addWebhook('https://discord.com/api/webhooks/...');
+// Both formats work!
+const webhook1 = await manager.addWebhook('https://discord.com/api/webhooks/...');
+const webhook2 = await manager.addWebhook('https://discordapp.com/api/webhooks/...');
 ```
 
 ##### `removeWebhook(id: string): void`
@@ -330,7 +339,7 @@ WebhookManager.prototype.customAction = async function(id, data) {
 ### What Dishook Does
 - ✅ Stores webhook data locally (never sent to external servers)
 - ✅ Masks webhook tokens in UI
-- ✅ Validates URLs before processing
+- ✅ Validates URLs before processing (supports both discord.com and discordapp.com)
 - ✅ Uses HTTPS for all Discord API calls
 
 ### What You Should Know
@@ -431,6 +440,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Message templates
 - [ ] Embed message builder
 - [ ] Message scheduling
+- [ ] Light mode toggle
 
 ### Version 1.2
 - [ ] Multiple webhook selection
