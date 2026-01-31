@@ -39,8 +39,8 @@
 [data-color-scheme="dark"] {
     --md-sys-color-primary: #90CAF9;
     --md-sys-color-primary-container: #1565C0;
-    --md-sys-color-on-primary: #0D47A1;
-    --md-sys-color-on-primary-container: #E3F2FD;
+    --md-sys-color-on-primary: #003C71;
+    --md-sys-color-on-primary-container: #FFFFFF;
     
     --md-sys-color-secondary: #81D4FA;
     --md-sys-color-on-secondary: #01579B;
@@ -54,7 +54,7 @@
     --md-sys-color-on-background: #E6E1E5;
     
     --md-sys-color-error: #F2B8B5;
-    --md-sys-color-on-error: #601410;
+    --md-sys-color-on-error: #FFFFFF;
     
     --md-sys-color-outline: #938F99;
     --md-sys-color-shadow: rgba(0, 0, 0, 0.3);
@@ -64,52 +64,60 @@
     --md-sys-elevation-3: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* Theme variants */
+/* Theme variants with proper on-primary colors */
 [data-theme="red"] {
     --md-sys-color-primary: #F44336;
     --md-sys-color-primary-container: #FFCDD2;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #B71C1C;
 }
 
 [data-theme="green"] {
     --md-sys-color-primary: #4CAF50;
     --md-sys-color-primary-container: #C8E6C9;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #1B5E20;
 }
 
 [data-theme="purple"] {
     --md-sys-color-primary: #9C27B0;
     --md-sys-color-primary-container: #E1BEE7;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #4A148C;
 }
 
 [data-theme="orange"] {
     --md-sys-color-primary: #FF9800;
     --md-sys-color-primary-container: #FFE0B2;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #E65100;
 }
 
 [data-theme="teal"] {
     --md-sys-color-primary: #009688;
     --md-sys-color-primary-container: #B2DFDB;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #004D40;
 }
 
 [data-theme="pink"] {
     --md-sys-color-primary: #E91E63;
     --md-sys-color-primary-container: #F8BBD0;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #880E4F;
 }
 
 [data-theme="indigo"] {
     --md-sys-color-primary: #3F51B5;
     --md-sys-color-primary-container: #C5CAE9;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #1A237E;
 }
 
 [data-theme="blue"] {
     --md-sys-color-primary: #2196F3;
     --md-sys-color-primary-container: #BBDEFB;
+    --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-on-primary-container: #0D47A1;
 }
 
@@ -281,10 +289,16 @@ body {
     flex: 1;
 }
 
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
 .status-info h4 {
     font-size: 18px;
     font-weight: 500;
-    margin-bottom: 4px;
     color: var(--md-sys-color-on-surface);
 }
 
@@ -460,10 +474,16 @@ body {
     flex: 1;
 }
 
+.webhook-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
 .webhook-info h2 {
     font-size: 24px;
     font-weight: 500;
-    margin-bottom: 8px;
     color: var(--md-sys-color-on-surface);
 }
 
@@ -489,6 +509,17 @@ body {
     padding: 24px;
     margin-bottom: 16px;
     box-shadow: var(--md-sys-elevation-1);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin-bottom: 0;
 }
 
 .detail-section h3 {
@@ -521,6 +552,10 @@ body {
     font-weight: 500;
     color: var(--md-sys-color-on-surface);
     margin-bottom: 8px;
+}
+
+.form-group label input[type="checkbox"] {
+    margin-right: 8px;
 }
 
 .text-input {
@@ -758,6 +793,10 @@ textarea.text-input {
         text-align: center;
     }
     
+    .webhook-title-row {
+        flex-direction: column;
+    }
+    
     .color-picker {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -779,6 +818,10 @@ textarea.text-input {
     .status-card {
         flex-direction: column;
         text-align: center;
+    }
+    
+    .status-header {
+        flex-direction: column;
     }
 }
 
