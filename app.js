@@ -12,6 +12,7 @@ class WebhookManager {
     constructor() {
         this.webhooks = [];
         this.currentWebhook = null;
+        this.embedFields = [];
         this.loadWebhooks();
     }
 
@@ -136,7 +137,8 @@ class WebhookManager {
                     exists: false,
                     name: 'Deleted Webhook',
                     avatar: this.getDeletedAvatar(),
-                    date: 'Unknown'
+                    date: 'Unknown',
+                    metadata: null
                 };
             }
 
@@ -151,7 +153,7 @@ class WebhookManager {
                 name: data.name || 'Unknown Webhook',
                 avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : this.getDefaultAvatar(),
                 date: this.formatSnowflakeDate(data.id),
-                data: data
+                metadata: data
             };
         } catch (error) {
             throw new Error('Failed to check status: ' + error.message);
@@ -244,8 +246,8 @@ class WebhookManager {
             throw new Error('Webhook not found');
         }
 
-        if (!payload.content && !payload.embeds) {
-            throw new Error('Message must have content or embeds');
+        if (!payload.content && !payload.embeds && !payload.files) {
+            throw new Error('Message must have content, embeds, or files');
         }
 
         try {
@@ -320,7 +322,7 @@ class WebhookManager {
     }
 
     /**
-     * Get webhook capabilities
+     * Get webhook capabilities (only supported ones)
      * @returns {Array<Object>} List of capabilities
      */
     getWebhookCapabilities() {
@@ -332,9 +334,21 @@ class WebhookManager {
                 supported: true
             },
             {
-                name: 'Send Embeds',
-                description: 'Send rich embedded content with colors, titles, and descriptions',
-                icon: 'article',
+                name: 'Multiple Embeds',
+                description: 'Send up to 10 embeds in a single message',
+                icon: 'view_carousel',
+                supported: true
+            },
+            {
+                name: 'Embed Fields',
+                description: 'Add inline and regular fields to embeds',
+                icon: 'view_module',
+                supported: true
+            },
+            {
+                name: 'Embed Images',
+                description: 'Add images, thumbnails, author, and footer to embeds',
+                icon: 'image',
                 supported: true
             },
             {
@@ -344,67 +358,10 @@ class WebhookManager {
                 supported: true
             },
             {
-                name: 'Attachments',
-                description: 'Upload files and images with webhook messages',
-                icon: 'attach_file',
-                supported: false,
-                note: 'Requires multipart/form-data upload'
-            },
-            {
-                name: 'Edit Messages',
-                description: 'Edit previously sent webhook messages',
-                icon: 'edit',
-                supported: false,
-                note: 'Requires message ID from webhook response'
-            },
-            {
-                name: 'Delete Messages',
-                description: 'Delete messages sent by this webhook',
-                icon: 'delete',
-                supported: false,
-                note: 'Requires message ID from webhook response'
-            },
-            {
-                name: 'Threads',
-                description: 'Send messages to specific forum/thread channels',
-                icon: 'forum',
-                supported: false,
-                note: 'Requires thread_id parameter'
-            },
-            {
-                name: 'Multiple Embeds',
-                description: 'Send up to 10 embeds in a single message',
-                icon: 'view_carousel',
-                supported: false,
-                note: 'Not implemented in UI yet'
-            },
-            {
-                name: 'Embed Fields',
-                description: 'Add inline and regular fields to embeds',
-                icon: 'view_module',
-                supported: false,
-                note: 'Not implemented in UI yet'
-            },
-            {
-                name: 'Embed Images',
-                description: 'Add images, thumbnails, author, and footer to embeds',
-                icon: 'image',
-                supported: false,
-                note: 'Not implemented in UI yet'
-            },
-            {
                 name: 'Allowed Mentions',
                 description: 'Control which users/roles can be mentioned',
                 icon: 'alternate_email',
-                supported: false,
-                note: 'Not implemented in UI yet'
-            },
-            {
-                name: 'Components',
-                description: 'Add buttons and select menus to messages',
-                icon: 'smart_button',
-                supported: false,
-                note: 'Webhook cannot receive interactions'
+                supported: true
             }
         ];
     }
@@ -527,6 +484,7 @@ function showWebhookDetail(id) {
     }
     
     manager.currentWebhook = webhook;
+    manager.embedFields = [];
     
     // Update UI
     document.getElementById('detail-avatar').src = webhook.avatar;
@@ -537,16 +495,36 @@ function showWebhookDetail(id) {
     document.getElementById('message-avatar').value = '';
     document.getElementById('message-content').value = '';
     document.getElementById('message-tts').checked = false;
-    document.getElementById('embed-title').value = '';
-    document.getElementById('embed-description').value = '';
-    document.getElementById('embed-color').value = '#2196F3';
-    document.getElementById('embed-url').value = '';
+    
+    // Clear embed form
+    clearEmbedForm();
+    renderEmbedFieldsList();
+    updateEmbedPreview();
+    
     document.getElementById('webhook-metadata').textContent = JSON.stringify(webhook.metadata, null, 2);
     
     // Render capabilities
     renderCapabilities();
     
     switchView('detail-view');
+}
+
+/**
+ * Clear embed form
+ */
+function clearEmbedForm() {
+    document.getElementById('embed-title').value = '';
+    document.getElementById('embed-description').value = '';
+    document.getElementById('embed-color').value = '#2196F3';
+    document.getElementById('embed-url').value = '';
+    document.getElementById('embed-author-name').value = '';
+    document.getElementById('embed-author-url').value = '';
+    document.getElementById('embed-author-icon').value = '';
+    document.getElementById('embed-footer-text').value = '';
+    document.getElementById('embed-footer-icon').value = '';
+    document.getElementById('embed-image-url').value = '';
+    document.getElementById('embed-thumbnail-url').value = '';
+    manager.embedFields = [];
 }
 
 /**
@@ -566,7 +544,7 @@ function renderCapabilities() {
         const icon = document.createElement('span');
         icon.className = 'material-icons capability-icon';
         icon.textContent = capability.icon;
-        icon.style.color = capability.supported ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-outline)';
+        icon.style.color = 'var(--md-sys-color-primary)';
         
         const info = document.createElement('div');
         info.className = 'capability-info';
@@ -581,18 +559,10 @@ function renderCapabilities() {
         name.style.margin = '0';
         
         const badge = document.createElement('span');
-        badge.className = 'status-badge';
+        badge.className = 'status-badge status-active';
         badge.style.fontSize = '10px';
         badge.style.padding = '2px 8px';
-        if (capability.supported) {
-            badge.textContent = 'Supported';
-            badge.classList.add('status-active');
-        } else {
-            badge.textContent = 'Not Available';
-            badge.style.backgroundColor = 'rgba(var(--md-sys-color-outline), 0.15)';
-            badge.style.color = 'var(--md-sys-color-on-surface-variant)';
-            badge.style.border = '1px solid var(--md-sys-color-outline)';
-        }
+        badge.textContent = 'Supported';
         
         header.appendChild(name);
         header.appendChild(badge);
@@ -603,20 +573,8 @@ function renderCapabilities() {
         description.style.fontSize = '14px';
         description.style.color = 'var(--md-sys-color-on-surface-variant)';
         
-        if (capability.note) {
-            const note = document.createElement('p');
-            note.textContent = capability.note;
-            note.style.margin = '4px 0 0 0';
-            note.style.fontSize = '12px';
-            note.style.color = 'var(--md-sys-color-outline)';
-            note.style.fontStyle = 'italic';
-            info.appendChild(header);
-            info.appendChild(description);
-            info.appendChild(note);
-        } else {
-            info.appendChild(header);
-            info.appendChild(description);
-        }
+        info.appendChild(header);
+        info.appendChild(description);
         
         item.appendChild(icon);
         item.appendChild(info);
@@ -650,7 +608,219 @@ function hideDialog(dialogId) {
     document.getElementById(dialogId).classList.remove('active');
 }
 
+/**
+ * Render embed fields list
+ */
+function renderEmbedFieldsList() {
+    const container = document.getElementById('embed-fields-list');
+    if (!container) return;
+    
+    if (manager.embedFields.length === 0) {
+        container.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px;">No fields added yet</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    manager.embedFields.forEach((field, index) => {
+        const fieldItem = document.createElement('div');
+        fieldItem.className = 'field-item';
+        fieldItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--md-sys-color-surface-variant); border-radius: 8px; margin-bottom: 8px;';
+        
+        const fieldInfo = document.createElement('div');
+        fieldInfo.style.flex = '1';
+        
+        const fieldName = document.createElement('div');
+        fieldName.style.fontWeight = '500';
+        fieldName.textContent = field.name;
+        
+        const fieldValue = document.createElement('div');
+        fieldValue.style.fontSize = '12px';
+        fieldValue.style.color = 'var(--md-sys-color-on-surface-variant)';
+        fieldValue.textContent = field.value.substring(0, 50) + (field.value.length > 50 ? '...' : '');
+        
+        const fieldType = document.createElement('div');
+        fieldType.style.fontSize = '10px';
+        fieldType.style.color = 'var(--md-sys-color-outline)';
+        fieldType.textContent = field.inline ? 'Inline' : 'Regular';
+        
+        fieldInfo.appendChild(fieldName);
+        fieldInfo.appendChild(fieldValue);
+        fieldInfo.appendChild(fieldType);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-button';
+        deleteBtn.innerHTML = '<span class="material-icons">delete</span>';
+        deleteBtn.onclick = () => {
+            manager.embedFields.splice(index, 1);
+            renderEmbedFieldsList();
+            updateEmbedPreview();
+        };
+        
+        fieldItem.appendChild(fieldInfo);
+        fieldItem.appendChild(deleteBtn);
+        container.appendChild(fieldItem);
+    });
+}
+
+/**
+ * Update embed preview
+ */
+function updateEmbedPreview() {
+    const preview = document.getElementById('embed-preview');
+    if (!preview) return;
+    
+    const title = document.getElementById('embed-title').value.trim();
+    const description = document.getElementById('embed-description').value.trim();
+    const colorHex = document.getElementById('embed-color').value.trim();
+    const url = document.getElementById('embed-url').value.trim();
+    const authorName = document.getElementById('embed-author-name').value.trim();
+    const authorUrl = document.getElementById('embed-author-url').value.trim();
+    const authorIcon = document.getElementById('embed-author-icon').value.trim();
+    const footerText = document.getElementById('embed-footer-text').value.trim();
+    const footerIcon = document.getElementById('embed-footer-icon').value.trim();
+    const imageUrl = document.getElementById('embed-image-url').value.trim();
+    const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
+    
+    if (!title && !description && manager.embedFields.length === 0) {
+        preview.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">Fill in some fields to see preview</p>';
+        return;
+    }
+    
+    preview.innerHTML = '';
+    
+    const embedDiv = document.createElement('div');
+    embedDiv.style.cssText = `
+        background: var(--md-sys-color-surface-variant);
+        border-left: 4px solid ${colorHex || '#2196F3'};
+        border-radius: 4px;
+        padding: 16px;
+        max-width: 520px;
+    `;
+    
+    // Author
+    if (authorName) {
+        const authorDiv = document.createElement('div');
+        authorDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 8px;';
+        
+        if (authorIcon) {
+            const authorImg = document.createElement('img');
+            authorImg.src = authorIcon;
+            authorImg.style.cssText = 'width: 24px; height: 24px; border-radius: 50%;';
+            authorDiv.appendChild(authorImg);
+        }
+        
+        const authorText = document.createElement('div');
+        authorText.style.cssText = 'font-size: 14px; font-weight: 500;';
+        if (authorUrl) {
+            const authorLink = document.createElement('a');
+            authorLink.href = authorUrl;
+            authorLink.textContent = authorName;
+            authorLink.style.color = 'var(--md-sys-color-primary)';
+            authorLink.target = '_blank';
+            authorText.appendChild(authorLink);
+        } else {
+            authorText.textContent = authorName;
+        }
+        authorDiv.appendChild(authorText);
+        embedDiv.appendChild(authorDiv);
+    }
+    
+    // Title
+    if (title) {
+        const titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--md-sys-color-on-surface);';
+        if (url) {
+            const titleLink = document.createElement('a');
+            titleLink.href = url;
+            titleLink.textContent = title;
+            titleLink.style.color = 'var(--md-sys-color-primary)';
+            titleLink.target = '_blank';
+            titleDiv.appendChild(titleLink);
+        } else {
+            titleDiv.textContent = title;
+        }
+        embedDiv.appendChild(titleDiv);
+    }
+    
+    // Description
+    if (description) {
+        const descDiv = document.createElement('div');
+        descDiv.style.cssText = 'font-size: 14px; margin-bottom: 8px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap;';
+        descDiv.textContent = description;
+        embedDiv.appendChild(descDiv);
+    }
+    
+    // Fields
+    if (manager.embedFields.length > 0) {
+        const fieldsDiv = document.createElement('div');
+        fieldsDiv.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; margin-top: 12px;';
+        
+        manager.embedFields.forEach(field => {
+            const fieldDiv = document.createElement('div');
+            fieldDiv.style.cssText = field.inline ? 'min-width: 0;' : 'grid-column: 1 / -1;';
+            
+            const fieldName = document.createElement('div');
+            fieldName.style.cssText = 'font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--md-sys-color-on-surface);';
+            fieldName.textContent = field.name;
+            
+            const fieldValue = document.createElement('div');
+            fieldValue.style.cssText = 'font-size: 14px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap;';
+            fieldValue.textContent = field.value;
+            
+            fieldDiv.appendChild(fieldName);
+            fieldDiv.appendChild(fieldValue);
+            fieldsDiv.appendChild(fieldDiv);
+        });
+        
+        embedDiv.appendChild(fieldsDiv);
+    }
+    
+    // Image
+    if (imageUrl) {
+        const imgDiv = document.createElement('img');
+        imgDiv.src = imageUrl;
+        imgDiv.style.cssText = 'max-width: 100%; border-radius: 4px; margin-top: 12px;';
+        embedDiv.appendChild(imgDiv);
+    }
+    
+    // Thumbnail (position absolute in real Discord)
+    if (thumbnailUrl && !imageUrl) {
+        const thumbDiv = document.createElement('img');
+        thumbDiv.src = thumbnailUrl;
+        thumbDiv.style.cssText = 'max-width: 80px; max-height: 80px; border-radius: 4px; float: right; margin-left: 16px;';
+        embedDiv.insertBefore(thumbDiv, embedDiv.firstChild);
+    }
+    
+    // Footer
+    if (footerText) {
+        const footerDiv = document.createElement('div');
+        footerDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--md-sys-color-on-surface-variant);';
+        
+        if (footerIcon) {
+            const footerImg = document.createElement('img');
+            footerImg.src = footerIcon;
+            footerImg.style.cssText = 'width: 20px; height: 20px; border-radius: 50%;';
+            footerDiv.appendChild(footerImg);
+        }
+        
+        const footerText_div = document.createElement('div');
+        footerText_div.textContent = footerText;
+        footerDiv.appendChild(footerText_div);
+        
+        embedDiv.appendChild(footerDiv);
+    }
+    
+    preview.appendChild(embedDiv);
+}
+
 // ==================== EVENT HANDLERS ====================
+
+// Search button (opens status checker modal)
+document.getElementById('search-button').addEventListener('click', () => {
+    document.getElementById('webhook-status-input').value = '';
+    document.getElementById('status-result').classList.add('hidden');
+    showDialog('status-checker-dialog');
+});
 
 // Webhook Status Checker
 document.getElementById('check-status-button').addEventListener('click', async () => {
@@ -673,9 +843,15 @@ document.getElementById('check-status-button').addEventListener('click', async (
         if (status.exists) {
             badge.textContent = 'Active';
             badge.className = 'status-badge status-active';
+            
+            // Show metadata
+            if (status.metadata) {
+                document.getElementById('status-metadata').textContent = JSON.stringify(status.metadata, null, 2);
+            }
         } else {
             badge.textContent = 'Deleted';
             badge.className = 'status-badge status-deleted';
+            document.getElementById('status-metadata').textContent = 'Webhook not found';
         }
         
         resultContainer.classList.remove('hidden');
@@ -691,6 +867,10 @@ document.getElementById('refresh-status-button').addEventListener('click', async
     if (url) {
         document.getElementById('check-status-button').click();
     }
+});
+
+document.getElementById('close-status-checker-button').addEventListener('click', () => {
+    hideDialog('status-checker-dialog');
 });
 
 // Add Webhook
@@ -807,6 +987,20 @@ document.getElementById('send-message-button').addEventListener('click', async (
     if (username) payload.username = username;
     if (avatarUrl) payload.avatar_url = avatarUrl;
     
+    // Allowed Mentions
+    const mentionEveryone = document.getElementById('mention-everyone').checked;
+    const mentionUsers = document.getElementById('mention-users').checked;
+    const mentionRoles = document.getElementById('mention-roles').checked;
+    
+    if (!mentionEveryone || !mentionUsers || !mentionRoles) {
+        payload.allowed_mentions = {
+            parse: []
+        };
+        if (mentionEveryone) payload.allowed_mentions.parse.push('everyone');
+        if (mentionUsers) payload.allowed_mentions.parse.push('users');
+        if (mentionRoles) payload.allowed_mentions.parse.push('roles');
+    }
+    
     try {
         await manager.sendMessage(manager.currentWebhook.id, payload);
         document.getElementById('message-content').value = '';
@@ -814,6 +1008,37 @@ document.getElementById('send-message-button').addEventListener('click', async (
     } catch (error) {
         showSnackbar(error.message);
     }
+});
+
+// Embed form change listeners
+['embed-title', 'embed-description', 'embed-color', 'embed-url', 
+ 'embed-author-name', 'embed-author-url', 'embed-author-icon',
+ 'embed-footer-text', 'embed-footer-icon', 'embed-image-url', 'embed-thumbnail-url'
+].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+        element.addEventListener('input', updateEmbedPreview);
+    }
+});
+
+// Add embed field
+document.getElementById('add-field-button').addEventListener('click', () => {
+    const name = document.getElementById('field-name').value.trim();
+    const value = document.getElementById('field-value').value.trim();
+    const inline = document.getElementById('field-inline').checked;
+    
+    if (!name || !value) {
+        showSnackbar('Field name and value are required');
+        return;
+    }
+    
+    manager.embedFields.push({ name, value, inline });
+    document.getElementById('field-name').value = '';
+    document.getElementById('field-value').value = '';
+    document.getElementById('field-inline').checked = false;
+    
+    renderEmbedFieldsList();
+    updateEmbedPreview();
 });
 
 // Send Embed
@@ -824,9 +1049,16 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     const description = document.getElementById('embed-description').value.trim();
     const colorHex = document.getElementById('embed-color').value.trim();
     const url = document.getElementById('embed-url').value.trim();
+    const authorName = document.getElementById('embed-author-name').value.trim();
+    const authorUrl = document.getElementById('embed-author-url').value.trim();
+    const authorIcon = document.getElementById('embed-author-icon').value.trim();
+    const footerText = document.getElementById('embed-footer-text').value.trim();
+    const footerIcon = document.getElementById('embed-footer-icon').value.trim();
+    const imageUrl = document.getElementById('embed-image-url').value.trim();
+    const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
     
-    if (!title && !description) {
-        showSnackbar('Embed must have title or description');
+    if (!title && !description && manager.embedFields.length === 0) {
+        showSnackbar('Embed must have title, description, or fields');
         return;
     }
     
@@ -841,12 +1073,35 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
         embed.color = color;
     }
     
+    // Author
+    if (authorName) {
+        embed.author = { name: authorName };
+        if (authorUrl) embed.author.url = authorUrl;
+        if (authorIcon) embed.author.icon_url = authorIcon;
+    }
+    
+    // Footer
+    if (footerText) {
+        embed.footer = { text: footerText };
+        if (footerIcon) embed.footer.icon_url = footerIcon;
+    }
+    
+    // Images
+    if (imageUrl) embed.image = { url: imageUrl };
+    if (thumbnailUrl) embed.thumbnail = { url: thumbnailUrl };
+    
+    // Fields
+    if (manager.embedFields.length > 0) {
+        embed.fields = manager.embedFields;
+    }
+    
     const payload = { embeds: [embed] };
     
     try {
         await manager.sendMessage(manager.currentWebhook.id, payload);
-        document.getElementById('embed-title').value = '';
-        document.getElementById('embed-description').value = '';
+        clearEmbedForm();
+        renderEmbedFieldsList();
+        updateEmbedPreview();
         showSnackbar('Embed sent successfully');
     } catch (error) {
         showSnackbar(error.message);
