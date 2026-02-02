@@ -48,6 +48,7 @@
                 <!-- Webhooks Grid -->
                 <div id="webhooks-grid" class="webhooks-grid hidden">
                     <!-- Webhook cards will be dynamically inserted here -->
+                    <!-- Each card will have refresh AND remove buttons -->
                 </div>
             </div>
 
@@ -86,17 +87,11 @@
                                 <input type="text" id="edit-name" class="text-input" placeholder="Enter webhook name">
                             </div>
                             
-                            <!-- Webhook Avatar Upload (Only File) -->
+                            <!-- Webhook Avatar URL Only -->
                             <div class="form-group">
-                                <label>Webhook Avatar</label>
-                                <div class="input-with-button">
-                                    <input type="file" id="edit-avatar-file" accept="image/*" class="file-input">
-                                    <button type="button" class="button outlined btn-file-trigger" data-target="edit-avatar-file">
-                                        <span class="material-icons">upload</span>
-                                        Upload Image
-                                    </button>
-                                </div>
-                                <p style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">Upload an image to change webhook avatar</p>
+                                <label for="edit-avatar-url">Webhook Avatar URL</label>
+                                <input type="url" id="edit-avatar-url" class="text-input" placeholder="https://example.com/avatar.png">
+                                <p style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">Enter image URL to change webhook avatar</p>
                             </div>
                             
                             <button class="button primary" id="save-changes-button">
@@ -444,7 +439,7 @@
     <!-- Delete Message Dialog -->
     <div id="delete-message-dialog" class="dialog-overlay">
         <div class="dialog">
-            <h2>Delete Message</h2>
+            <h2>Delete Message by ID</h2>
             <p>Enter the message ID to delete:</p>
             <div class="form-group">
                 <label for="delete-message-id">Message ID</label>
