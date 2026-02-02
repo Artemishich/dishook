@@ -13,8 +13,7 @@ class WebhookManager {
         this.webhooks = [];
         this.currentWebhook = null;
         this.embedFields = [];
-        this.uploadedFiles = {}; // Store uploaded file data
-        this.attachmentFiles = []; // Store attachment files
+        this.attachmentFiles = [];
         this.MAX_ATTACHMENTS = 10;
         this.loadWebhooks();
     }
@@ -45,6 +44,71 @@ class WebhookManager {
     }
 
     /**
+     * Load message history for a webhook
+     * @param {string} id - Webhook ID
+     * @returns {Array} Message history
+     */
+    loadMessageHistory(id) {
+        try {
+            const key = `dishook_history_${id}`;
+            const stored = localStorage.getItem(key);
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('Failed to load message history:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Save message history for a webhook
+     * @param {string} id - Webhook ID
+     * @param {Array} history - Message history
+     */
+    saveMessageHistory(id, history) {
+        try {
+            const key = `dishook_history_${id}`;
+            localStorage.setItem(key, JSON.stringify(history));
+        } catch (error) {
+            console.error('Failed to save message history:', error);
+        }
+    }
+
+    /**
+     * Add message to history
+     * @param {string} webhookId - Webhook ID
+     * @param {string} messageId - Message ID from Discord
+     * @param {string} content - Message content/preview
+     */
+    addMessageToHistory(webhookId, messageId, content) {
+        const history = this.loadMessageHistory(webhookId);
+        history.unshift({
+            id: messageId,
+            content: content,
+            timestamp: Date.now()
+        });
+        
+        // Keep only last 50 messages
+        if (history.length > 50) {
+            history.splice(50);
+        }
+        
+        this.saveMessageHistory(webhookId, history);
+    }
+
+    /**
+     * Clear message history for a webhook
+     * @param {string} id - Webhook ID
+     */
+    clearMessageHistory(id) {
+        try {
+            const key = `dishook_history_${id}`;
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.error('Failed to clear message history:', error);
+        }
+    }
+
+    /**
      * Parse mentions from content and create allowed_mentions object
      * @param {string} content - Message content
      * @returns {Object} allowed_mentions configuration
@@ -58,17 +122,14 @@ class WebhookManager {
             roles: []
         };
 
-        // Detect @everyone
         if (content.includes('@everyone')) {
             mentions.parse.push('everyone');
         }
 
-        // Detect @here
         if (content.includes('@here')) {
-            mentions.parse.push('everyone'); // @here uses same permission as @everyone
+            mentions.parse.push('everyone');
         }
 
-        // Detect user mentions: <@123456789>
         const userMentions = content.match(/<@!?(\d+)>/g);
         if (userMentions) {
             mentions.parse.push('users');
@@ -80,7 +141,6 @@ class WebhookManager {
             });
         }
 
-        // Detect role mentions: <@&123456789>
         const roleMentions = content.match(/<@&(\d+)>/g);
         if (roleMentions) {
             mentions.parse.push('roles');
@@ -92,12 +152,10 @@ class WebhookManager {
             });
         }
 
-        // If no mentions found, return null
         if (mentions.parse.length === 0 && mentions.users.length === 0 && mentions.roles.length === 0) {
             return null;
         }
 
-        // Clean up empty arrays
         if (mentions.users.length === 0) delete mentions.users;
         if (mentions.roles.length === 0) delete mentions.roles;
         if (mentions.parse.length === 0) delete mentions.parse;
@@ -125,18 +183,15 @@ class WebhookManager {
      * @returns {Promise<Object>} Webhook data
      */
     async addWebhook(url) {
-        // Validate URL
         if (!this.isValidWebhookUrl(url)) {
             throw new Error('Invalid webhook URL');
         }
 
-        // Check for duplicates
         const existingWebhook = this.webhooks.find(w => w.url === url);
         if (existingWebhook) {
             throw new Error('Webhook already exists');
         }
 
-        // Fetch webhook data from Discord
         try {
             const response = await fetch(url);
             if (!response.ok) {
@@ -182,7 +237,6 @@ class WebhookManager {
 
             const data = await response.json();
             
-            // Update local data
             webhook.name = data.name || 'Unknown Webhook';
             webhook.avatar = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : this.getDefaultAvatar();
             webhook.token = data.token;
@@ -213,6 +267,7 @@ class WebhookManager {
             if (response.status === 404) {
                 return {
                     exists: false,
+                    url: url,
                     name: 'Deleted Webhook',
                     avatar: this.getDeletedAvatar(),
                     date: 'Unknown',
@@ -228,6 +283,7 @@ class WebhookManager {
             
             return {
                 exists: true,
+                url: url,
                 name: data.name || 'Unknown Webhook',
                 avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : this.getDefaultAvatar(),
                 date: this.formatSnowflakeDate(data.id),
@@ -261,6 +317,7 @@ class WebhookManager {
      */
     removeWebhook(id) {
         this.webhooks = this.webhooks.filter(w => w.id !== id);
+        this.clearMessageHistory(id);
         this.saveWebhooks();
     }
 
@@ -295,12 +352,12 @@ class WebhookManager {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to update webhook on Discord');
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to update webhook on Discord');
             }
 
             const data = await response.json();
             
-            // Update local data
             webhook.name = data.name || webhook.name;
             webhook.avatar = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : webhook.avatar;
             webhook.metadata = data;
@@ -317,7 +374,7 @@ class WebhookManager {
      * @param {string} id - Webhook ID
      * @param {Object} payload - Message payload
      * @param {Array<File>} files - Optional files to upload
-     * @returns {Promise<void>}
+     * @returns {Promise<string>} Message ID
      */
     async sendMessage(id, payload, files = []) {
         const webhook = this.getWebhook(id);
@@ -329,7 +386,6 @@ class WebhookManager {
             throw new Error('Message must have content, embeds, or files');
         }
 
-        // Automatically detect and add allowed_mentions
         if (payload.content) {
             const mentions = this.parseMentions(payload.content);
             if (mentions) {
@@ -338,8 +394,9 @@ class WebhookManager {
         }
 
         try {
+            let response;
+            
             if (files.length > 0) {
-                // Use FormData for file uploads
                 const formData = new FormData();
                 formData.append('payload_json', JSON.stringify(payload));
                 
@@ -347,32 +404,67 @@ class WebhookManager {
                     formData.append(`files[${index}]`, file);
                 });
                 
-                const response = await fetch(webhook.url, {
+                response = await fetch(webhook.url + '?wait=true', {
                     method: 'POST',
                     body: formData
                 });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Failed to send message');
-                }
             } else {
-                // Regular JSON payload
-                const response = await fetch(webhook.url, {
+                response = await fetch(webhook.url + '?wait=true', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(payload)
                 });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Failed to send message');
-                }
             }
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to send message');
+            }
+
+            const messageData = await response.json();
+            
+            // Add to history
+            const preview = payload.content || (payload.embeds && payload.embeds[0] ? 
+                (payload.embeds[0].title || payload.embeds[0].description || 'Embed message') : 
+                'Message with attachments');
+            
+            this.addMessageToHistory(id, messageData.id, preview);
+            
+            return messageData.id;
         } catch (error) {
             throw new Error('Failed to send message: ' + error.message);
+        }
+    }
+
+    /**
+     * Delete a message from webhook
+     * @param {string} webhookId - Webhook ID
+     * @param {string} messageId - Message ID
+     * @returns {Promise<void>}
+     */
+    async deleteMessage(webhookId, messageId) {
+        const webhook = this.getWebhook(webhookId);
+        if (!webhook) {
+            throw new Error('Webhook not found');
+        }
+
+        try {
+            const response = await fetch(`${webhook.url}/messages/${messageId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok && response.status !== 404) {
+                throw new Error('Failed to delete message');
+            }
+
+            // Remove from history
+            const history = this.loadMessageHistory(webhookId);
+            const filtered = history.filter(msg => msg.id !== messageId);
+            this.saveMessageHistory(webhookId, filtered);
+        } catch (error) {
+            throw new Error('Failed to delete message: ' + error.message);
         }
     }
 
@@ -403,8 +495,26 @@ class WebhookManager {
     }
 
     /**
+     * Delete webhook from Discord by URL (for search results)
+     * @param {string} url - Webhook URL
+     * @returns {Promise<void>}
+     */
+    async deleteWebhookByUrl(url) {
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok && response.status !== 404) {
+                throw new Error('Failed to delete webhook from Discord');
+            }
+        } catch (error) {
+            throw new Error('Failed to delete webhook: ' + error.message);
+        }
+    }
+
+    /**
      * Validate Discord webhook URL
-     * Supports both discord.com and discordapp.com domains
      * @param {string} url - Webhook URL
      * @returns {boolean} Is valid
      */
@@ -511,6 +621,9 @@ function createWebhookCard(webhook) {
     token.className = 'webhook-card-token';
     token.textContent = maskToken(webhook.token);
     
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display: flex; gap: 4px;';
+    
     const refreshBtn = document.createElement('button');
     refreshBtn.className = 'icon-button';
     refreshBtn.title = 'Refresh';
@@ -526,13 +639,87 @@ function createWebhookCard(webhook) {
         }
     };
     
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'icon-button';
+    removeBtn.title = 'Remove from Panel';
+    removeBtn.innerHTML = '<span class="material-icons">remove_circle</span>';
+    removeBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (confirm(`Remove "${webhook.name}" from panel? (Webhook stays on Discord)`)) {
+            manager.removeWebhook(webhook.id);
+            renderWebhooks();
+            showSnackbar('Webhook removed from panel');
+        }
+    };
+    
+    actions.appendChild(refreshBtn);
+    actions.appendChild(removeBtn);
+    
     info.appendChild(name);
     info.appendChild(token);
     card.appendChild(avatar);
     card.appendChild(info);
-    card.appendChild(refreshBtn);
+    card.appendChild(actions);
     
     return card;
+}
+
+/**
+ * Render message history
+ */
+function renderMessageHistory() {
+    if (!manager.currentWebhook) return;
+    
+    const container = document.getElementById('message-history-container');
+    const history = manager.loadMessageHistory(manager.currentWebhook.id);
+    
+    if (history.length === 0) {
+        container.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 16px;">No messages sent yet</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    history.forEach(msg => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--md-sys-color-surface-variant); border-radius: 8px; margin-bottom: 8px;';
+        
+        const content = document.createElement('div');
+        content.style.flex = '1';
+        content.style.marginRight = '12px';
+        
+        const text = document.createElement('div');
+        text.style.cssText = 'font-size: 14px; margin-bottom: 4px; word-break: break-word;';
+        text.textContent = msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : '');
+        
+        const meta = document.createElement('div');
+        meta.style.cssText = 'font-size: 12px; color: var(--md-sys-color-on-surface-variant);';
+        const date = new Date(msg.timestamp);
+        meta.textContent = `ID: ${msg.id} • ${date.toLocaleString()}`;
+        
+        content.appendChild(text);
+        content.appendChild(meta);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-button';
+        deleteBtn.title = 'Delete Message';
+        deleteBtn.innerHTML = '<span class="material-icons">delete</span>';
+        deleteBtn.onclick = async () => {
+            if (confirm('Delete this message from Discord?')) {
+                try {
+                    await manager.deleteMessage(manager.currentWebhook.id, msg.id);
+                    renderMessageHistory();
+                    showSnackbar('Message deleted');
+                } catch (error) {
+                    showSnackbar(error.message);
+                }
+            }
+        };
+        
+        item.appendChild(content);
+        item.appendChild(deleteBtn);
+        container.appendChild(item);
+    });
 }
 
 /**
@@ -548,36 +735,25 @@ function showWebhookDetail(id) {
     
     manager.currentWebhook = webhook;
     manager.embedFields = [];
-    manager.uploadedFiles = {};
     manager.attachmentFiles = [];
     
-    // Update UI
     document.getElementById('detail-avatar').src = webhook.avatar;
     document.getElementById('detail-name').textContent = webhook.name;
     document.getElementById('detail-token').textContent = maskToken(webhook.token);
     document.getElementById('edit-name').value = webhook.name;
+    document.getElementById('edit-avatar-file').value = '';
     document.getElementById('message-username').value = '';
     document.getElementById('message-avatar-url').value = '';
     document.getElementById('message-content').value = '';
     document.getElementById('message-tts').checked = false;
-    
-    // Clear webhook avatar edit
-    clearFileInput('edit-avatar');
-    
-    // Clear embed username/avatar
-    document.getElementById('embed-username').value = '';
-    clearFileInput('embed-avatar');
-    
-    // Clear file inputs and hide clear buttons
-    clearFileInput('message-avatar');
     document.getElementById('message-attachments').value = '';
     document.getElementById('attachments-preview').innerHTML = '';
     updateAttachmentButtonState();
     
-    // Clear embed form
     clearEmbedForm();
     renderEmbedFieldsList();
     updateEmbedPreview();
+    renderMessageHistory();
     
     document.getElementById('webhook-metadata').textContent = JSON.stringify(webhook.metadata, null, 2);
     
@@ -599,17 +775,11 @@ function clearEmbedForm() {
     document.getElementById('embed-footer-icon-url').value = '';
     document.getElementById('embed-image-url').value = '';
     document.getElementById('embed-thumbnail-url').value = '';
-    
-    // Clear file inputs using helper
-    clearFileInput('embed-author-icon');
-    clearFileInput('embed-footer-icon');
-    clearFileInput('embed-image');
-    clearFileInput('embed-thumbnail');
+    document.getElementById('embed-username').value = '';
+    document.getElementById('embed-avatar-url').value = '';
     
     manager.embedFields = [];
-    manager.uploadedFiles = {};
     
-    // Update color swatch selection
     document.querySelectorAll('.color-swatch').forEach(swatch => {
         swatch.classList.remove('selected');
         if (swatch.dataset.color === '#2196F3') {
@@ -699,74 +869,6 @@ function renderEmbedFieldsList() {
 }
 
 /**
- * Handle file input and convert to data URL or prepare for upload
- * @param {File} file - File object
- * @param {string} key - Storage key
- * @returns {Promise<string>} Data URL or upload reference
- */
-async function handleFileUpload(file, key) {
-    if (!file) return null;
-    
-    // Store file for later upload
-    manager.uploadedFiles[key] = file;
-    
-    // Return data URL for preview
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
-/**
- * Get image URL (prioritize uploaded file, then URL input)
- * @param {string} fileInputId - File input element ID
- * @param {string} urlInputId - URL input element ID
- * @param {string} fileKey - File storage key
- * @returns {Promise<string|null>} Image URL
- */
-async function getImageUrl(fileInputId, urlInputId, fileKey) {
-    const fileInput = document.getElementById(fileInputId);
-    const urlInput = document.getElementById(urlInputId);
-    
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-        return await handleFileUpload(fileInput.files[0], fileKey);
-    }
-    
-    if (urlInput && urlInput.value.trim() && !urlInput.value.startsWith('data:')) {
-        return urlInput.value.trim();
-    }
-    
-    return null;
-}
-
-/**
- * Clear file input and related UI
- * @param {string} baseName - Base name without -file/-url suffix
- */
-function clearFileInput(baseName) {
-    const fileInput = document.getElementById(baseName + '-file');
-    const urlInput = document.getElementById(baseName + '-url');
-    const clearBtn = document.querySelector(`[data-file="${baseName}-file"]`);
-    
-    if (fileInput) fileInput.value = '';
-    if (urlInput) {
-        urlInput.value = '';
-        urlInput.removeAttribute('readonly');
-    }
-    if (clearBtn) clearBtn.style.display = 'none';
-    
-    // Remove from uploaded files
-    const keys = Object.keys(manager.uploadedFiles);
-    keys.forEach(key => {
-        if (key.includes(baseName)) {
-            delete manager.uploadedFiles[key];
-        }
-    });
-}
-
-/**
  * Update attachment button state based on limit
  */
 function updateAttachmentButtonState() {
@@ -795,13 +897,11 @@ async function updateEmbedPreview() {
     const url = document.getElementById('embed-url').value.trim();
     const authorName = document.getElementById('embed-author-name').value.trim();
     const authorUrl = document.getElementById('embed-author-url').value.trim();
+    const authorIcon = document.getElementById('embed-author-icon-url').value.trim();
     const footerText = document.getElementById('embed-footer-text').value.trim();
-    
-    // Get image URLs (from files or URLs)
-    const authorIcon = await getImageUrl('embed-author-icon-file', 'embed-author-icon-url', 'authorIcon');
-    const footerIcon = await getImageUrl('embed-footer-icon-file', 'embed-footer-icon-url', 'footerIcon');
-    const imageUrl = await getImageUrl('embed-image-file', 'embed-image-url', 'mainImage');
-    const thumbnailUrl = await getImageUrl('embed-thumbnail-file', 'embed-thumbnail-url', 'thumbnail');
+    const footerIcon = document.getElementById('embed-footer-icon-url').value.trim();
+    const imageUrl = document.getElementById('embed-image-url').value.trim();
+    const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
     
     if (!title && !description && manager.embedFields.length === 0) {
         preview.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">Fill in some fields to see preview</p>';
@@ -819,7 +919,6 @@ async function updateEmbedPreview() {
         max-width: 520px;
     `;
     
-    // Author
     if (authorName) {
         const authorDiv = document.createElement('div');
         authorDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 8px;';
@@ -847,7 +946,6 @@ async function updateEmbedPreview() {
         embedDiv.appendChild(authorDiv);
     }
     
-    // Title
     if (title) {
         const titleDiv = document.createElement('div');
         titleDiv.style.cssText = 'font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--md-sys-color-on-surface);';
@@ -864,7 +962,6 @@ async function updateEmbedPreview() {
         embedDiv.appendChild(titleDiv);
     }
     
-    // Description
     if (description) {
         const descDiv = document.createElement('div');
         descDiv.style.cssText = 'font-size: 14px; margin-bottom: 8px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap;';
@@ -872,7 +969,6 @@ async function updateEmbedPreview() {
         embedDiv.appendChild(descDiv);
     }
     
-    // Fields
     if (manager.embedFields.length > 0) {
         const fieldsDiv = document.createElement('div');
         fieldsDiv.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; margin-top: 12px;';
@@ -897,7 +993,6 @@ async function updateEmbedPreview() {
         embedDiv.appendChild(fieldsDiv);
     }
     
-    // Image
     if (imageUrl) {
         const imgDiv = document.createElement('img');
         imgDiv.src = imageUrl;
@@ -905,7 +1000,6 @@ async function updateEmbedPreview() {
         embedDiv.appendChild(imgDiv);
     }
     
-    // Thumbnail
     if (thumbnailUrl && !imageUrl) {
         const thumbDiv = document.createElement('img');
         thumbDiv.src = thumbnailUrl;
@@ -913,7 +1007,6 @@ async function updateEmbedPreview() {
         embedDiv.insertBefore(thumbDiv, embedDiv.firstChild);
     }
     
-    // Footer
     if (footerText) {
         const footerDiv = document.createElement('div');
         footerDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--md-sys-color-on-surface-variant);';
@@ -937,7 +1030,7 @@ async function updateEmbedPreview() {
 
 // ==================== EVENT HANDLERS ====================
 
-// Inline upload button handlers
+// File upload button triggers
 document.addEventListener('click', (e) => {
     const trigger = e.target.closest('.btn-file-trigger');
     if (trigger) {
@@ -947,71 +1040,17 @@ document.addEventListener('click', (e) => {
             fileInput.click();
         }
     }
-    
-    const clearBtn = e.target.closest('.btn-clear-file');
-    if (clearBtn) {
-        const urlInputId = clearBtn.dataset.input;
-        const fileInputId = clearBtn.dataset.file;
-        
-        if (urlInputId) {
-            const urlInput = document.getElementById(urlInputId);
-            urlInput.value = '';
-            urlInput.removeAttribute('readonly');
-        }
-        if (fileInputId) {
-            document.getElementById(fileInputId).value = '';
-        }
-        
-        clearBtn.style.display = 'none';
-        updateEmbedPreview();
+});
+
+// Webhook avatar file upload
+document.getElementById('edit-avatar-file')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        showSnackbar('Avatar selected. Click "Save Changes" to upload.');
     }
 });
 
-// Webhook avatar file upload handler
-document.getElementById('edit-avatar-file')?.addEventListener('change', async (e) => {
-    if (!e.target.files || !e.target.files[0]) return;
-    
-    const urlInput = document.getElementById('edit-avatar-url');
-    const clearBtn = document.querySelector('[data-file="edit-avatar-file"]');
-    const file = e.target.files[0];
-    
-    urlInput.value = file.name;
-    urlInput.setAttribute('readonly', 'readonly');
-    if (clearBtn) clearBtn.style.display = 'inline-flex';
-});
-
-// Single file upload handlers (avatars, icons)
-['message-avatar-file', 'embed-avatar-file', 'embed-author-icon-file', 'embed-footer-icon-file', 
- 'embed-image-file', 'embed-thumbnail-file'].forEach(id => {
-    const fileInput = document.getElementById(id);
-    if (!fileInput) return;
-    
-    fileInput.addEventListener('change', async (e) => {
-        if (!e.target.files || !e.target.files[0]) return;
-        
-        const baseName = id.replace('-file', '');
-        const urlInput = document.getElementById(baseName + '-url');
-        const clearBtn = document.querySelector(`[data-file="${id}"]`);
-        
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = (event) => {
-            if (urlInput) {
-                urlInput.value = file.name;
-                urlInput.setAttribute('readonly', 'readonly');
-            }
-            if (clearBtn) {
-                clearBtn.style.display = 'inline-flex';
-            }
-            updateEmbedPreview();
-        };
-        
-        reader.readAsDataURL(file);
-    });
-});
-
-// Multiple attachments handler with limit
+// Multiple attachments handler
 document.getElementById('message-attachments')?.addEventListener('change', (e) => {
     const preview = document.getElementById('attachments-preview');
     const input = e.target;
@@ -1027,7 +1066,7 @@ document.getElementById('message-attachments')?.addEventListener('change', (e) =
         return;
     }
     
-    newFiles.forEach((file, index) => {
+    newFiles.forEach((file) => {
         if (manager.attachmentFiles.length >= manager.MAX_ATTACHMENTS) {
             return;
         }
@@ -1052,7 +1091,6 @@ document.getElementById('message-attachments')?.addEventListener('change', (e) =
                 item.remove();
                 updateAttachmentButtonState();
                 
-                // Update remaining indices
                 Array.from(preview.children).forEach((child, i) => {
                     child.dataset.fileIndex = i;
                 });
@@ -1074,11 +1112,9 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
         
-        // Update active tab
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         
-        // Update active panel
         document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
         document.querySelector(`[data-panel="${tabName}"]`).classList.add('active');
     });
@@ -1089,21 +1125,18 @@ document.querySelectorAll('.color-swatch').forEach(swatch => {
     swatch.addEventListener('click', () => {
         const color = swatch.dataset.color;
         
-        // Update selected state
         document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
         swatch.classList.add('selected');
         
-        // Update color input
         document.getElementById('embed-color').value = color;
         updateEmbedPreview();
     });
 });
 
-// Color input changes (manual entry)
+// Color input changes
 document.getElementById('embed-color')?.addEventListener('input', (e) => {
     const color = e.target.value;
     
-    // Update swatch selection if matching
     document.querySelectorAll('.color-swatch').forEach(swatch => {
         if (swatch.dataset.color.toLowerCase() === color.toLowerCase()) {
             swatch.click();
@@ -1113,10 +1146,11 @@ document.getElementById('embed-color')?.addEventListener('input', (e) => {
     updateEmbedPreview();
 });
 
-// Search button (opens status checker modal)
+// Search button
 document.getElementById('search-button').addEventListener('click', () => {
     document.getElementById('webhook-status-input').value = '';
     document.getElementById('status-result').classList.add('hidden');
+    document.getElementById('status-actions').style.display = 'none';
     showDialog('status-checker-dialog');
 });
 
@@ -1124,6 +1158,7 @@ document.getElementById('search-button').addEventListener('click', () => {
 document.getElementById('check-status-button').addEventListener('click', async () => {
     const url = document.getElementById('webhook-status-input').value.trim();
     const resultContainer = document.getElementById('status-result');
+    const actionsContainer = document.getElementById('status-actions');
     
     if (!url) {
         showSnackbar('Please enter a webhook URL');
@@ -1145,16 +1180,54 @@ document.getElementById('check-status-button').addEventListener('click', async (
             if (status.metadata) {
                 document.getElementById('status-metadata').textContent = JSON.stringify(status.metadata, null, 2);
             }
+            
+            // Show action buttons
+            actionsContainer.style.display = 'flex';
+            
+            // Store URL for action buttons
+            actionsContainer.dataset.webhookUrl = status.url;
         } else {
             badge.textContent = 'Deleted';
             badge.className = 'status-badge status-deleted';
             document.getElementById('status-metadata').textContent = 'Webhook not found';
+            actionsContainer.style.display = 'none';
         }
         
         resultContainer.classList.remove('hidden');
     } catch (error) {
         showSnackbar(error.message);
         resultContainer.classList.add('hidden');
+    }
+});
+
+// Add webhook from search
+document.getElementById('add-from-search-button')?.addEventListener('click', async () => {
+    const url = document.getElementById('status-actions').dataset.webhookUrl;
+    if (!url) return;
+    
+    try {
+        await manager.addWebhook(url);
+        hideDialog('status-checker-dialog');
+        renderWebhooks();
+        showSnackbar('Webhook added to panel');
+    } catch (error) {
+        showSnackbar(error.message);
+    }
+});
+
+// Delete webhook from search
+document.getElementById('delete-from-search-button')?.addEventListener('click', async () => {
+    const url = document.getElementById('status-actions').dataset.webhookUrl;
+    if (!url) return;
+    
+    if (confirm('Permanently delete this webhook from Discord?')) {
+        try {
+            await manager.deleteWebhookByUrl(url);
+            document.getElementById('check-status-button').click();
+            showSnackbar('Webhook deleted from Discord');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
     }
 });
 
@@ -1259,15 +1332,16 @@ document.getElementById('save-changes-button').addEventListener('click', async (
         const updates = { name };
         
         // If avatar file is uploaded, convert to base64
-        if (avatarFileInput && avatarFileInput.files && avatarFileInput.files[0]) {
+        if (avatarFileInput?.files?.[0]) {
             const avatarBase64 = await manager.fileToBase64(avatarFileInput.files[0]);
             updates.avatar = avatarBase64;
         }
         
         await manager.updateWebhook(manager.currentWebhook.id, updates);
-        showSnackbar('Webhook updated successfully');
+        await manager.refreshWebhook(manager.currentWebhook.id);
         showWebhookDetail(manager.currentWebhook.id);
         renderWebhooks();
+        showSnackbar('Webhook updated successfully');
     } catch (error) {
         showSnackbar(error.message);
     }
@@ -1279,10 +1353,8 @@ document.getElementById('send-message-button').addEventListener('click', async (
     
     const content = document.getElementById('message-content').value.trim();
     const username = document.getElementById('message-username').value.trim();
+    const avatarUrl = document.getElementById('message-avatar-url').value.trim();
     const tts = document.getElementById('message-tts').checked;
-    
-    // Get avatar (file or URL)
-    const avatarUrl = await getImageUrl('message-avatar-file', 'message-avatar-url', 'messageAvatar');
     
     if (!content && manager.attachmentFiles.length === 0) {
         showSnackbar('Message must have content or attachments');
@@ -1292,19 +1364,18 @@ document.getElementById('send-message-button').addEventListener('click', async (
     const payload = {};
     if (content) payload.content = content;
     if (username) payload.username = username;
+    if (avatarUrl) payload.avatar_url = avatarUrl;
     if (tts) payload.tts = tts;
-    
-    // Only add avatar_url if it's a URL (not a file)
-    if (avatarUrl && !avatarUrl.startsWith('data:')) {
-        payload.avatar_url = avatarUrl;
-    }
     
     try {
         await manager.sendMessage(manager.currentWebhook.id, payload, manager.attachmentFiles);
         document.getElementById('message-content').value = '';
+        document.getElementById('message-username').value = '';
+        document.getElementById('message-avatar-url').value = '';
         document.getElementById('attachments-preview').innerHTML = '';
         manager.attachmentFiles = [];
         updateAttachmentButtonState();
+        renderMessageHistory();
         showSnackbar('Message sent successfully');
     } catch (error) {
         showSnackbar(error.message);
@@ -1352,11 +1423,14 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     const url = document.getElementById('embed-url').value.trim();
     const authorName = document.getElementById('embed-author-name').value.trim();
     const authorUrl = document.getElementById('embed-author-url').value.trim();
+    const authorIcon = document.getElementById('embed-author-icon-url').value.trim();
     const footerText = document.getElementById('embed-footer-text').value.trim();
+    const footerIcon = document.getElementById('embed-footer-icon-url').value.trim();
+    const imageUrl = document.getElementById('embed-image-url').value.trim();
+    const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
     
-    // Get username and avatar for embed
     const username = document.getElementById('embed-username').value.trim();
-    const avatarUrl = await getImageUrl('embed-avatar-file', 'embed-avatar-url', 'embedAvatar');
+    const avatarUrl = document.getElementById('embed-avatar-url').value.trim();
     
     if (!title && !description && manager.embedFields.length === 0) {
         showSnackbar('Embed must have title, description, or fields');
@@ -1368,66 +1442,59 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     if (description) embed.description = description;
     if (url) embed.url = url;
     
-    // Convert hex to decimal
     if (colorHex) {
         const color = parseInt(colorHex.replace('#', ''), 16);
         embed.color = color;
     }
     
-    // Get image URLs (prioritize uploaded files)
-    const authorIcon = await getImageUrl('embed-author-icon-file', 'embed-author-icon-url', 'authorIcon');
-    const footerIcon = await getImageUrl('embed-footer-icon-file', 'embed-footer-icon-url', 'footerIcon');
-    const imageUrl = await getImageUrl('embed-image-file', 'embed-image-url', 'mainImage');
-    const thumbnailUrl = await getImageUrl('embed-thumbnail-file', 'embed-thumbnail-url', 'thumbnail');
-    
-    // Author
     if (authorName) {
         embed.author = { name: authorName };
         if (authorUrl) embed.author.url = authorUrl;
         if (authorIcon) embed.author.icon_url = authorIcon;
     }
     
-    // Footer
     if (footerText) {
         embed.footer = { text: footerText };
         if (footerIcon) embed.footer.icon_url = footerIcon;
     }
     
-    // Images
     if (imageUrl) embed.image = { url: imageUrl };
     if (thumbnailUrl) embed.thumbnail = { url: thumbnailUrl };
     
-    // Fields
     if (manager.embedFields.length > 0) {
         embed.fields = manager.embedFields;
     }
     
     const payload = { embeds: [embed] };
     
-    // Add username and avatar if provided
     if (username) payload.username = username;
-    if (avatarUrl && !avatarUrl.startsWith('data:')) {
-        payload.avatar_url = avatarUrl;
-    }
-    
-    // Collect files if any were uploaded
-    const files = [];
-    Object.values(manager.uploadedFiles).forEach(file => {
-        if (file instanceof File) {
-            files.push(file);
-        }
-    });
+    if (avatarUrl) payload.avatar_url = avatarUrl;
     
     try {
-        await manager.sendMessage(manager.currentWebhook.id, payload, files);
+        await manager.sendMessage(manager.currentWebhook.id, payload);
         clearEmbedForm();
         renderEmbedFieldsList();
         updateEmbedPreview();
+        renderMessageHistory();
         showSnackbar('Embed sent successfully');
     } catch (error) {
         showSnackbar(error.message);
     }
 });
+
+// Clear message history
+document.getElementById('clear-history-button')?.addEventListener('click', () => {
+    if (!manager.currentWebhook) return;
+    
+    if (confirm('Clear all message history? (Messages on Discord will not be deleted)')) {
+        manager.clearMessageHistory(manager.currentWebhook.id);
+        renderMessageHistory();
+        showSnackbar('Message history cleared');
+    }
+});
+
+// Delete message by ID dialog
+let deleteMessageDialogOpen = false;
 
 // Spam Messages
 document.getElementById('spam-button').addEventListener('click', () => {
@@ -1482,6 +1549,7 @@ document.getElementById('confirm-spam-button').addEventListener('click', async (
     }
     
     if (sent === count) {
+        renderMessageHistory();
         showSnackbar(`All ${count} messages sent successfully`);
     }
 });
@@ -1591,7 +1659,7 @@ function init() {
     
     renderWebhooks();
     
-    console.log('Dishook initialized with webhook avatar editing and embed username/avatar support');
+    console.log('Dishook initialized - Fixed avatars, added message history & delete');
 }
 
 if (document.readyState === 'loading') {
