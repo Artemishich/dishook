@@ -18,9 +18,6 @@ class WebhookManager {
         this.loadWebhooks();
     }
 
-    /**
-     * Load webhooks from localStorage
-     */
     loadWebhooks() {
         try {
             const stored = localStorage.getItem('dishook_webhooks');
@@ -31,9 +28,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Save webhooks to localStorage
-     */
     saveWebhooks() {
         try {
             localStorage.setItem('dishook_webhooks', JSON.stringify(this.webhooks));
@@ -43,11 +37,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Load message history for a webhook
-     * @param {string} id - Webhook ID
-     * @returns {Array} Message history
-     */
     loadMessageHistory(id) {
         try {
             const key = `dishook_history_${id}`;
@@ -59,11 +48,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Save message history for a webhook
-     * @param {string} id - Webhook ID
-     * @param {Array} history - Message history
-     */
     saveMessageHistory(id, history) {
         try {
             const key = `dishook_history_${id}`;
@@ -73,12 +57,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Add message to history
-     * @param {string} webhookId - Webhook ID
-     * @param {string} messageId - Message ID from Discord
-     * @param {string} content - Message content/preview
-     */
     addMessageToHistory(webhookId, messageId, content) {
         const history = this.loadMessageHistory(webhookId);
         history.unshift({
@@ -87,7 +65,6 @@ class WebhookManager {
             timestamp: Date.now()
         });
         
-        // Keep only last 50 messages
         if (history.length > 50) {
             history.splice(50);
         }
@@ -95,10 +72,6 @@ class WebhookManager {
         this.saveMessageHistory(webhookId, history);
     }
 
-    /**
-     * Clear message history for a webhook
-     * @param {string} id - Webhook ID
-     */
     clearMessageHistory(id) {
         try {
             const key = `dishook_history_${id}`;
@@ -108,11 +81,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Parse mentions from content and create allowed_mentions object
-     * @param {string} content - Message content
-     * @returns {Object} allowed_mentions configuration
-     */
     parseMentions(content) {
         if (!content) return null;
 
@@ -163,11 +131,6 @@ class WebhookManager {
         return mentions;
     }
 
-    /**
-     * Add a new webhook
-     * @param {string} url - Discord webhook URL
-     * @returns {Promise<Object>} Webhook data
-     */
     async addWebhook(url) {
         if (!this.isValidWebhookUrl(url)) {
             throw new Error('Invalid webhook URL');
@@ -204,11 +167,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Refresh webhook data from Discord
-     * @param {string} id - Webhook ID
-     * @returns {Promise<Object>} Updated webhook data
-     */
     async refreshWebhook(id) {
         const webhook = this.getWebhook(id);
         if (!webhook) {
@@ -237,11 +195,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Check webhook status
-     * @param {string} url - Discord webhook URL
-     * @returns {Promise<Object>} Status data
-     */
     async checkWebhookStatus(url) {
         if (!this.isValidWebhookUrl(url)) {
             throw new Error('Invalid webhook URL');
@@ -280,11 +233,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Format snowflake ID to date
-     * @param {string} snowflake - Discord snowflake ID
-     * @returns {string} Formatted date
-     */
     formatSnowflakeDate(snowflake) {
         const timestamp = (BigInt(snowflake) >> 22n) + 1420070400000n;
         const date = new Date(Number(timestamp));
@@ -297,31 +245,16 @@ class WebhookManager {
         });
     }
 
-    /**
-     * Remove a webhook from panel only
-     * @param {string} id - Webhook ID
-     */
     removeWebhook(id) {
         this.webhooks = this.webhooks.filter(w => w.id !== id);
         this.clearMessageHistory(id);
         this.saveWebhooks();
     }
 
-    /**
-     * Get webhook by ID
-     * @param {string} id - Webhook ID
-     * @returns {Object|null} Webhook data
-     */
     getWebhook(id) {
         return this.webhooks.find(w => w.id === id) || null;
     }
 
-    /**
-     * Update webhook data (name and/or avatar)
-     * @param {string} id - Webhook ID
-     * @param {Object} updates - Updated fields
-     * @returns {Promise<Object>} Updated webhook
-     */
     async updateWebhook(id, updates) {
         const webhook = this.getWebhook(id);
         if (!webhook) {
@@ -355,13 +288,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Send a message through webhook with multipart/form-data support for files
-     * @param {string} id - Webhook ID
-     * @param {Object} payload - Message payload
-     * @param {Array<File>} files - Optional files to upload
-     * @returns {Promise<string>} Message ID
-     */
     async sendMessage(id, payload, files = []) {
         const webhook = this.getWebhook(id);
         if (!webhook) {
@@ -411,7 +337,6 @@ class WebhookManager {
 
             const messageData = await response.json();
             
-            // Add to history
             const preview = payload.content || (payload.embeds && payload.embeds[0] ? 
                 (payload.embeds[0].title || payload.embeds[0].description || 'Embed message') : 
                 'Message with attachments');
@@ -424,12 +349,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Delete a message from webhook
-     * @param {string} webhookId - Webhook ID
-     * @param {string} messageId - Message ID
-     * @returns {Promise<void>}
-     */
     async deleteMessage(webhookId, messageId) {
         const webhook = this.getWebhook(webhookId);
         if (!webhook) {
@@ -445,7 +364,6 @@ class WebhookManager {
                 throw new Error('Failed to delete message');
             }
 
-            // Remove from history
             const history = this.loadMessageHistory(webhookId);
             const filtered = history.filter(msg => msg.id !== messageId);
             this.saveMessageHistory(webhookId, filtered);
@@ -454,11 +372,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Delete webhook from Discord
-     * @param {string} id - Webhook ID
-     * @returns {Promise<void>}
-     */
     async deleteWebhookFromDiscord(id) {
         const webhook = this.getWebhook(id);
         if (!webhook) {
@@ -480,11 +393,6 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Delete webhook from Discord by URL (for search results)
-     * @param {string} url - Webhook URL
-     * @returns {Promise<void>}
-     */
     async deleteWebhookByUrl(url) {
         try {
             const response = await fetch(url, {
@@ -499,42 +407,24 @@ class WebhookManager {
         }
     }
 
-    /**
-     * Validate Discord webhook URL
-     * @param {string} url - Webhook URL
-     * @returns {boolean} Is valid
-     */
     isValidWebhookUrl(url) {
         const webhookRegex = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/;
         return webhookRegex.test(url);
     }
 
-    /**
-     * Get default avatar URL
-     * @returns {string} Default avatar URL
-     */
     getDefaultAvatar() {
         return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/%3E%3C/svg%3E';
     }
 
-    /**
-     * Get deleted webhook avatar
-     * @returns {string} Trash icon SVG
-     */
     getDeletedAvatar() {
         return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23F44336"%3E%3Cpath d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/%3E%3C/svg%3E';
     }
 }
 
-// Initialize manager
 const manager = new WebhookManager();
 
 // ==================== UI MANAGEMENT ====================
 
-/**
- * Show snackbar notification
- * @param {string} message - Notification message
- */
 function showSnackbar(message) {
     const snackbar = document.getElementById('snackbar');
     const messageElement = document.getElementById('snackbar-message');
@@ -547,10 +437,6 @@ function showSnackbar(message) {
     }, 3000);
 }
 
-/**
- * Switch between views
- * @param {string} viewId - View ID to show
- */
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(view => {
         view.classList.remove('active');
@@ -558,9 +444,6 @@ function switchView(viewId) {
     document.getElementById(viewId).classList.add('active');
 }
 
-/**
- * Render webhooks grid
- */
 function renderWebhooks() {
     const grid = document.getElementById('webhooks-grid');
     const emptyState = document.getElementById('empty-state');
@@ -581,11 +464,6 @@ function renderWebhooks() {
     });
 }
 
-/**
- * Create webhook card element
- * @param {Object} webhook - Webhook data
- * @returns {HTMLElement} Card element
- */
 function createWebhookCard(webhook) {
     const card = document.createElement('div');
     card.className = 'webhook-card';
@@ -650,9 +528,6 @@ function createWebhookCard(webhook) {
     return card;
 }
 
-/**
- * Render message history
- */
 function renderMessageHistory() {
     if (!manager.currentWebhook) return;
     
@@ -708,10 +583,6 @@ function renderMessageHistory() {
     });
 }
 
-/**
- * Show webhook detail view
- * @param {string} id - Webhook ID
- */
 function showWebhookDetail(id) {
     const webhook = manager.getWebhook(id);
     if (!webhook) {
@@ -746,9 +617,6 @@ function showWebhookDetail(id) {
     switchView('detail-view');
 }
 
-/**
- * Clear embed form
- */
 function clearEmbedForm() {
     document.getElementById('embed-title').value = '';
     document.getElementById('embed-description').value = '';
@@ -774,35 +642,19 @@ function clearEmbedForm() {
     });
 }
 
-/**
- * Mask webhook token
- * @param {string} token - Webhook token
- * @returns {string} Masked token
- */
 function maskToken(token) {
     if (!token || token.length < 8) return '••••••••••••••••';
     return token.substring(0, 4) + '••••••••' + token.substring(token.length - 4);
 }
 
-/**
- * Show dialog
- * @param {string} dialogId - Dialog ID
- */
 function showDialog(dialogId) {
     document.getElementById(dialogId).classList.add('active');
 }
 
-/**
- * Hide dialog
- * @param {string} dialogId - Dialog ID
- */
 function hideDialog(dialogId) {
     document.getElementById(dialogId).classList.remove('active');
 }
 
-/**
- * Render embed fields list
- */
 function renderEmbedFieldsList() {
     const container = document.getElementById('embed-fields-list');
     if (!container) return;
@@ -854,9 +706,6 @@ function renderEmbedFieldsList() {
     });
 }
 
-/**
- * Update attachment button state based on limit
- */
 function updateAttachmentButtonState() {
     const addBtn = document.getElementById('btn-add-attachments');
     if (!addBtn) return;
@@ -870,9 +719,6 @@ function updateAttachmentButtonState() {
     }
 }
 
-/**
- * Update embed preview
- */
 async function updateEmbedPreview() {
     const preview = document.getElementById('embed-preview');
     if (!preview) return;
@@ -1014,4 +860,545 @@ async function updateEmbedPreview() {
     preview.appendChild(embedDiv);
 }
 
-// Continue in next message due to character limit...
+// ==================== EVENT LISTENERS ====================
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderWebhooks();
+    
+    // Add webhook button
+    document.getElementById('add-webhook-fab').addEventListener('click', () => {
+        showDialog('add-webhook-dialog');
+    });
+    
+    document.getElementById('confirm-add-button').addEventListener('click', async () => {
+        const url = document.getElementById('webhook-url-input').value.trim();
+        if (!url) {
+            showSnackbar('Please enter a webhook URL');
+            return;
+        }
+        
+        try {
+            await manager.addWebhook(url);
+            hideDialog('add-webhook-dialog');
+            document.getElementById('webhook-url-input').value = '';
+            renderWebhooks();
+            showSnackbar('Webhook added successfully');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    document.getElementById('cancel-add-button').addEventListener('click', () => {
+        hideDialog('add-webhook-dialog');
+        document.getElementById('webhook-url-input').value = '';
+    });
+    
+    // Search button
+    document.getElementById('search-button').addEventListener('click', () => {
+        showDialog('status-checker-dialog');
+    });
+    
+    // FIX 1: Check status button with Add/Delete buttons
+    document.getElementById('check-status-button').addEventListener('click', async () => {
+        const statusInput = document.getElementById('webhook-status-input');
+        const url = statusInput.value.trim();
+        
+        if (!url) {
+            showSnackbar('Please enter webhook URL');
+            return;
+        }
+        
+        try {
+            const status = await manager.checkWebhookStatus(url);
+            const resultDiv = document.getElementById('status-result');
+            const actionsDiv = document.getElementById('status-actions');
+            
+            resultDiv.classList.remove('hidden');
+            document.getElementById('status-avatar').src = status.avatar;
+            document.getElementById('status-name').textContent = status.name;
+            document.getElementById('status-date').textContent = `Created: ${status.date}`;
+            document.getElementById('status-metadata').textContent = status.metadata ? JSON.stringify(status.metadata, null, 2) : 'No metadata';
+            
+            const badge = document.getElementById('status-badge');
+            if (status.exists) {
+                badge.textContent = 'Active';
+                badge.className = 'status-badge active';
+                // ПОКАЗАТЬ КНОПКИ
+                actionsDiv.style.display = 'flex';
+            } else {
+                badge.textContent = 'Deleted';
+                badge.className = 'status-badge deleted';
+                // СКРЫТЬ КНОПКИ
+                actionsDiv.style.display = 'none';
+            }
+            
+            // ОБРАБОТЧИКИ ДЛЯ КНОПОК ADD/DELETE
+            document.getElementById('add-from-search-button').onclick = async () => {
+                try {
+                    await manager.addWebhook(url);
+                    renderWebhooks();
+                    showSnackbar('Webhook added to panel');
+                    hideDialog('status-checker-dialog');
+                } catch (error) {
+                    showSnackbar(error.message);
+                }
+            };
+            
+            document.getElementById('delete-from-search-button').onclick = async () => {
+                if (confirm(`Delete "${status.name}" from Discord permanently?`)) {
+                    try {
+                        await manager.deleteWebhookByUrl(url);
+                        showSnackbar('Webhook deleted from Discord');
+                        // Обновить статус
+                        document.getElementById('check-status-button').click();
+                    } catch (error) {
+                        showSnackbar(error.message);
+                    }
+                }
+            };
+            
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    document.getElementById('refresh-status-button').addEventListener('click', () => {
+        document.getElementById('check-status-button').click();
+    });
+    
+    document.getElementById('close-status-checker-button').addEventListener('click', () => {
+        hideDialog('status-checker-dialog');
+    });
+    
+    // Back button
+    document.getElementById('back-button').addEventListener('click', () => {
+        switchView('dashboard-view');
+    });
+    
+    // Refresh webhook button
+    document.getElementById('refresh-webhook-button').addEventListener('click', async () => {
+        if (!manager.currentWebhook) return;
+        
+        try {
+            await manager.refreshWebhook(manager.currentWebhook.id);
+            document.getElementById('detail-name').textContent = manager.currentWebhook.name;
+            document.getElementById('detail-avatar').src = manager.currentWebhook.avatar;
+            document.getElementById('edit-name').value = manager.currentWebhook.name;
+            document.getElementById('webhook-metadata').textContent = JSON.stringify(manager.currentWebhook.metadata, null, 2);
+            renderWebhooks();
+            showSnackbar('Webhook refreshed');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    // Copy token button
+    document.getElementById('copy-token-button').addEventListener('click', () => {
+        if (!manager.currentWebhook) return;
+        
+        navigator.clipboard.writeText(manager.currentWebhook.token)
+            .then(() => showSnackbar('Token copied to clipboard'))
+            .catch(() => showSnackbar('Failed to copy token'));
+    });
+    
+    // FIX 2: Save changes button with avatar URL
+    document.getElementById('save-changes-button').addEventListener('click', async () => {
+        if (!manager.currentWebhook) return;
+        
+        const name = document.getElementById('edit-name').value.trim();
+        const avatarUrl = document.getElementById('edit-avatar-url').value.trim();
+        
+        if (!name && !avatarUrl) {
+            showSnackbar('Please provide name or avatar URL');
+            return;
+        }
+        
+        try {
+            const updates = {};
+            
+            if (name) {
+                updates.name = name;
+            }
+            
+            if (avatarUrl) {
+                // Загрузить картинку и конвертировать в base64
+                const response = await fetch(avatarUrl);
+                if (!response.ok) throw new Error('Failed to fetch image');
+                
+                const blob = await response.blob();
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                updates.avatar = base64;
+            }
+            
+            await manager.updateWebhook(manager.currentWebhook.id, updates);
+            
+            document.getElementById('detail-avatar').src = manager.currentWebhook.avatar;
+            document.getElementById('detail-name').textContent = manager.currentWebhook.name;
+            document.getElementById('edit-avatar-url').value = '';
+            
+            renderWebhooks();
+            showSnackbar('Webhook updated successfully');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    // Send message button
+    document.getElementById('send-message-button').addEventListener('click', async () => {
+        if (!manager.currentWebhook) return;
+        
+        const content = document.getElementById('message-content').value.trim();
+        const username = document.getElementById('message-username').value.trim();
+        const avatarUrl = document.getElementById('message-avatar-url').value.trim();
+        const tts = document.getElementById('message-tts').checked;
+        const fileInput = document.getElementById('message-attachments');
+        const files = Array.from(fileInput.files);
+        
+        if (!content && files.length === 0) {
+            showSnackbar('Please enter a message or attach files');
+            return;
+        }
+        
+        try {
+            const payload = {};
+            if (content) payload.content = content;
+            if (username) payload.username = username;
+            if (avatarUrl) payload.avatar_url = avatarUrl;
+            if (tts) payload.tts = true;
+            
+            await manager.sendMessage(manager.currentWebhook.id, payload, files);
+            
+            document.getElementById('message-content').value = '';
+            document.getElementById('message-username').value = '';
+            document.getElementById('message-avatar-url').value = '';
+            document.getElementById('message-tts').checked = false;
+            fileInput.value = '';
+            document.getElementById('attachments-preview').innerHTML = '';
+            manager.attachmentFiles = [];
+            updateAttachmentButtonState();
+            
+            renderMessageHistory();
+            showSnackbar('Message sent successfully');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    // Attachments handling
+    document.getElementById('message-attachments').addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        manager.attachmentFiles = files;
+        
+        const preview = document.getElementById('attachments-preview');
+        preview.innerHTML = '';
+        
+        files.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--md-sys-color-surface-variant); border-radius: 4px; margin-top: 8px;';
+            
+            const icon = document.createElement('span');
+            icon.className = 'material-icons';
+            icon.textContent = 'image';
+            
+            const name = document.createElement('span');
+            name.textContent = file.name;
+            name.style.flex = '1';
+            
+            const size = document.createElement('span');
+            size.textContent = (file.size / 1024).toFixed(2) + ' KB';
+            size.style.fontSize = '12px';
+            size.style.color = 'var(--md-sys-color-on-surface-variant)';
+            
+            item.appendChild(icon);
+            item.appendChild(name);
+            item.appendChild(size);
+            preview.appendChild(item);
+        });
+        
+        updateAttachmentButtonState();
+    });
+    
+    document.querySelector('.btn-file-trigger').addEventListener('click', () => {
+        document.getElementById('message-attachments').click();
+    });
+    
+    // Embed tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            
+            tab.classList.add('active');
+            const panel = document.querySelector(`.tab-panel[data-panel="${tab.dataset.tab}"]`);
+            if (panel) panel.classList.add('active');
+        });
+    });
+    
+    // Embed color swatches
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', () => {
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+            swatch.classList.add('selected');
+            document.getElementById('embed-color').value = swatch.dataset.color;
+            updateEmbedPreview();
+        });
+    });
+    
+    // Embed live preview
+    const embedInputs = [
+        'embed-title', 'embed-description', 'embed-color', 'embed-url',
+        'embed-author-name', 'embed-author-url', 'embed-author-icon-url',
+        'embed-footer-text', 'embed-footer-icon-url',
+        'embed-image-url', 'embed-thumbnail-url'
+    ];
+    
+    embedInputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', updateEmbedPreview);
+        }
+    });
+    
+    // Add field button
+    document.getElementById('add-field-button').addEventListener('click', () => {
+        const name = document.getElementById('field-name').value.trim();
+        const value = document.getElementById('field-value').value.trim();
+        const inline = document.getElementById('field-inline').checked;
+        
+        if (!name || !value) {
+            showSnackbar('Please fill in field name and value');
+            return;
+        }
+        
+        manager.embedFields.push({ name, value, inline });
+        
+        document.getElementById('field-name').value = '';
+        document.getElementById('field-value').value = '';
+        document.getElementById('field-inline').checked = false;
+        
+        renderEmbedFieldsList();
+        updateEmbedPreview();
+    });
+    
+    // Send embed button
+    document.getElementById('send-embed-button').addEventListener('click', async () => {
+        if (!manager.currentWebhook) return;
+        
+        const title = document.getElementById('embed-title').value.trim();
+        const description = document.getElementById('embed-description').value.trim();
+        const color = document.getElementById('embed-color').value.trim();
+        const url = document.getElementById('embed-url').value.trim();
+        const authorName = document.getElementById('embed-author-name').value.trim();
+        const authorUrl = document.getElementById('embed-author-url').value.trim();
+        const authorIcon = document.getElementById('embed-author-icon-url').value.trim();
+        const footerText = document.getElementById('embed-footer-text').value.trim();
+        const footerIcon = document.getElementById('embed-footer-icon-url').value.trim();
+        const imageUrl = document.getElementById('embed-image-url').value.trim();
+        const thumbnailUrl = document.getElementById('embed-thumbnail-url').value.trim();
+        const username = document.getElementById('embed-username').value.trim();
+        const avatarUrl = document.getElementById('embed-avatar-url').value.trim();
+        
+        if (!title && !description && manager.embedFields.length === 0) {
+            showSnackbar('Please fill in some embed fields');
+            return;
+        }
+        
+        try {
+            const embed = {};
+            if (title) embed.title = title;
+            if (description) embed.description = description;
+            if (color) embed.color = parseInt(color.replace('#', ''), 16);
+            if (url) embed.url = url;
+            
+            if (authorName) {
+                embed.author = { name: authorName };
+                if (authorUrl) embed.author.url = authorUrl;
+                if (authorIcon) embed.author.icon_url = authorIcon;
+            }
+            
+            if (manager.embedFields.length > 0) {
+                embed.fields = manager.embedFields;
+            }
+            
+            if (imageUrl) embed.image = { url: imageUrl };
+            if (thumbnailUrl) embed.thumbnail = { url: thumbnailUrl };
+            
+            if (footerText) {
+                embed.footer = { text: footerText };
+                if (footerIcon) embed.footer.icon_url = footerIcon;
+            }
+            
+            const payload = { embeds: [embed] };
+            if (username) payload.username = username;
+            if (avatarUrl) payload.avatar_url = avatarUrl;
+            
+            await manager.sendMessage(manager.currentWebhook.id, payload);
+            
+            clearEmbedForm();
+            renderEmbedFieldsList();
+            updateEmbedPreview();
+            renderMessageHistory();
+            showSnackbar('Embed sent successfully');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    // FIX 3: Delete message by ID dialog
+    document.getElementById('clear-history-button').addEventListener('click', () => {
+        if (!manager.currentWebhook) return;
+        
+        if (confirm('Clear all message history? This will not delete messages from Discord.')) {
+            manager.clearMessageHistory(manager.currentWebhook.id);
+            renderMessageHistory();
+            showSnackbar('History cleared');
+        }
+    });
+    
+    // Cancel delete message
+    document.getElementById('cancel-delete-message-button').addEventListener('click', () => {
+        hideDialog('delete-message-dialog');
+        document.getElementById('delete-message-id').value = '';
+    });
+    
+    // Confirm delete message by ID
+    document.getElementById('confirm-delete-message-button').addEventListener('click', async () => {
+        const messageId = document.getElementById('delete-message-id').value.trim();
+        
+        if (!messageId || !manager.currentWebhook) {
+            showSnackbar('Please enter message ID');
+            return;
+        }
+        
+        try {
+            await manager.deleteMessage(manager.currentWebhook.id, messageId);
+            renderMessageHistory();
+            hideDialog('delete-message-dialog');
+            document.getElementById('delete-message-id').value = '';
+            showSnackbar('Message deleted');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    // Danger zone buttons
+    document.getElementById('spam-button').addEventListener('click', () => {
+        showDialog('spam-dialog');
+    });
+    
+    document.getElementById('remove-webhook-button').addEventListener('click', () => {
+        if (!manager.currentWebhook) return;
+        
+        if (confirm(`Remove "${manager.currentWebhook.name}" from panel? Webhook will stay on Discord.`)) {
+            const webhookId = manager.currentWebhook.id;
+            manager.removeWebhook(webhookId);
+            switchView('dashboard-view');
+            renderWebhooks();
+            showSnackbar('Webhook removed from panel');
+        }
+    });
+    
+    document.getElementById('delete-webhook-button').addEventListener('click', () => {
+        if (!manager.currentWebhook) return;
+        
+        if (confirm(`Delete "${manager.currentWebhook.name}" from Discord permanently? This cannot be undone!`)) {
+            const webhookId = manager.currentWebhook.id;
+            manager.deleteWebhookFromDiscord(webhookId)
+                .then(() => {
+                    switchView('dashboard-view');
+                    renderWebhooks();
+                    showSnackbar('Webhook deleted from Discord');
+                })
+                .catch(error => showSnackbar(error.message));
+        }
+    });
+    
+    document.getElementById('refresh-metadata-button').addEventListener('click', async () => {
+        if (!manager.currentWebhook) return;
+        
+        try {
+            await manager.refreshWebhook(manager.currentWebhook.id);
+            document.getElementById('webhook-metadata').textContent = JSON.stringify(manager.currentWebhook.metadata, null, 2);
+            showSnackbar('Metadata refreshed');
+        } catch (error) {
+            showSnackbar(error.message);
+        }
+    });
+    
+    // Spam dialog
+    document.getElementById('confirm-spam-button').addEventListener('click', async () => {
+        if (!manager.currentWebhook) return;
+        
+        const message = document.getElementById('spam-message').value.trim();
+        const delay = parseInt(document.getElementById('spam-delay').value);
+        const count = parseInt(document.getElementById('spam-count').value);
+        
+        if (!message) {
+            showSnackbar('Please enter a message');
+            return;
+        }
+        
+        hideDialog('spam-dialog');
+        
+        let sent = 0;
+        for (let i = 0; i < count; i++) {
+            try {
+                await manager.sendMessage(manager.currentWebhook.id, { content: message });
+                sent++;
+                showSnackbar(`Sent ${sent}/${count} messages`);
+                
+                if (i < count - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            } catch (error) {
+                showSnackbar(`Failed after ${sent} messages: ${error.message}`);
+                break;
+            }
+        }
+        
+        renderMessageHistory();
+        showSnackbar(`Spam completed: ${sent}/${count} messages sent`);
+    });
+    
+    document.getElementById('cancel-spam-button').addEventListener('click', () => {
+        hideDialog('spam-dialog');
+    });
+    
+    // Theme settings
+    document.getElementById('settings-button').addEventListener('click', () => {
+        showDialog('theme-dialog');
+    });
+    
+    document.getElementById('close-theme-button').addEventListener('click', () => {
+        hideDialog('theme-dialog');
+    });
+    
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const color = option.dataset.color;
+            document.documentElement.setAttribute('data-accent', color);
+            localStorage.setItem('dishook_accent', color);
+            showSnackbar(`Theme changed to ${color}`);
+        });
+    });
+    
+    // Load saved theme
+    const savedAccent = localStorage.getItem('dishook_accent');
+    if (savedAccent) {
+        document.documentElement.setAttribute('data-accent', savedAccent);
+    }
+    
+    // Close dialogs on overlay click
+    document.querySelectorAll('.dialog-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+});
