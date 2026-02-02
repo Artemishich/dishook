@@ -106,6 +106,20 @@ class WebhookManager {
     }
 
     /**
+     * Convert File to base64 data URI for Discord API
+     * @param {File} file - Image file
+     * @returns {Promise<string>} Base64 data URI
+     */
+    async fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /**
      * Add a new webhook
      * @param {string} url - Discord webhook URL
      * @returns {Promise<Object>} Webhook data
@@ -260,7 +274,7 @@ class WebhookManager {
     }
 
     /**
-     * Update webhook data
+     * Update webhook data (name and/or avatar)
      * @param {string} id - Webhook ID
      * @param {Object} updates - Updated fields
      * @returns {Promise<Object>} Updated webhook
@@ -546,6 +560,13 @@ function showWebhookDetail(id) {
     document.getElementById('message-avatar-url').value = '';
     document.getElementById('message-content').value = '';
     document.getElementById('message-tts').checked = false;
+    
+    // Clear webhook avatar edit
+    clearFileInput('edit-avatar');
+    
+    // Clear embed username/avatar
+    document.getElementById('embed-username').value = '';
+    clearFileInput('embed-avatar');
     
     // Clear file inputs and hide clear buttons
     clearFileInput('message-avatar');
@@ -946,8 +967,21 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Webhook avatar file upload handler
+document.getElementById('edit-avatar-file')?.addEventListener('change', async (e) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    
+    const urlInput = document.getElementById('edit-avatar-url');
+    const clearBtn = document.querySelector('[data-file="edit-avatar-file"]');
+    const file = e.target.files[0];
+    
+    urlInput.value = file.name;
+    urlInput.setAttribute('readonly', 'readonly');
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+});
+
 // Single file upload handlers (avatars, icons)
-['message-avatar-file', 'embed-author-icon-file', 'embed-footer-icon-file', 
+['message-avatar-file', 'embed-avatar-file', 'embed-author-icon-file', 'embed-footer-icon-file', 
  'embed-image-file', 'embed-thumbnail-file'].forEach(id => {
     const fileInput = document.getElementById(id);
     if (!fileInput) return;
@@ -1209,11 +1243,12 @@ document.getElementById('copy-token-button').addEventListener('click', async () 
     }
 });
 
-// Save Changes
+// Save Changes (Name and Avatar)
 document.getElementById('save-changes-button').addEventListener('click', async () => {
     if (!manager.currentWebhook) return;
     
     const name = document.getElementById('edit-name').value.trim();
+    const avatarFileInput = document.getElementById('edit-avatar-file');
     
     if (!name) {
         showSnackbar('Name cannot be empty');
@@ -1221,7 +1256,15 @@ document.getElementById('save-changes-button').addEventListener('click', async (
     }
     
     try {
-        await manager.updateWebhook(manager.currentWebhook.id, { name });
+        const updates = { name };
+        
+        // If avatar file is uploaded, convert to base64
+        if (avatarFileInput && avatarFileInput.files && avatarFileInput.files[0]) {
+            const avatarBase64 = await manager.fileToBase64(avatarFileInput.files[0]);
+            updates.avatar = avatarBase64;
+        }
+        
+        await manager.updateWebhook(manager.currentWebhook.id, updates);
         showSnackbar('Webhook updated successfully');
         showWebhookDetail(manager.currentWebhook.id);
         renderWebhooks();
@@ -1311,6 +1354,10 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     const authorUrl = document.getElementById('embed-author-url').value.trim();
     const footerText = document.getElementById('embed-footer-text').value.trim();
     
+    // Get username and avatar for embed
+    const username = document.getElementById('embed-username').value.trim();
+    const avatarUrl = await getImageUrl('embed-avatar-file', 'embed-avatar-url', 'embedAvatar');
+    
     if (!title && !description && manager.embedFields.length === 0) {
         showSnackbar('Embed must have title, description, or fields');
         return;
@@ -1356,6 +1403,12 @@ document.getElementById('send-embed-button').addEventListener('click', async () 
     }
     
     const payload = { embeds: [embed] };
+    
+    // Add username and avatar if provided
+    if (username) payload.username = username;
+    if (avatarUrl && !avatarUrl.startsWith('data:')) {
+        payload.avatar_url = avatarUrl;
+    }
     
     // Collect files if any were uploaded
     const files = [];
@@ -1538,7 +1591,7 @@ function init() {
     
     renderWebhooks();
     
-    console.log('Dishook initialized with automatic mentions detection');
+    console.log('Dishook initialized with webhook avatar editing and embed username/avatar support');
 }
 
 if (document.readyState === 'loading') {
