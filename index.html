@@ -86,20 +86,17 @@
                                 <input type="text" id="edit-name" class="text-input" placeholder="Enter webhook name">
                             </div>
                             
-                            <!-- Webhook Avatar Upload -->
+                            <!-- Webhook Avatar Upload (Only File) -->
                             <div class="form-group">
                                 <label>Webhook Avatar</label>
                                 <div class="input-with-button">
-                                    <input type="url" id="edit-avatar-url" class="text-input" placeholder="Upload an image to change avatar" readonly>
                                     <input type="file" id="edit-avatar-file" accept="image/*" class="file-input">
                                     <button type="button" class="button outlined btn-file-trigger" data-target="edit-avatar-file">
                                         <span class="material-icons">upload</span>
-                                        Upload
-                                    </button>
-                                    <button type="button" class="button outlined btn-clear-file" data-input="edit-avatar-url" data-file="edit-avatar-file" style="display: none;">
-                                        <span class="material-icons">close</span>
+                                        Upload Image
                                     </button>
                                 </div>
+                                <p style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">Upload an image to change webhook avatar</p>
                             </div>
                             
                             <button class="button primary" id="save-changes-button">
@@ -116,20 +113,10 @@
                                 <input type="text" id="message-username" class="text-input" placeholder="Custom username">
                             </div>
                             
-                            <!-- Avatar with Upload/URL -->
+                            <!-- Avatar URL Only -->
                             <div class="form-group">
-                                <label>Avatar (optional)</label>
-                                <div class="input-with-button">
-                                    <input type="url" id="message-avatar-url" class="text-input" placeholder="https://example.com/avatar.png" readonly>
-                                    <input type="file" id="message-avatar-file" accept="image/*" class="file-input">
-                                    <button type="button" class="button outlined btn-file-trigger" data-target="message-avatar-file">
-                                        <span class="material-icons">upload</span>
-                                        Upload
-                                    </button>
-                                    <button type="button" class="button outlined btn-clear-file" data-input="message-avatar-url" data-file="message-avatar-file" style="display: none;">
-                                        <span class="material-icons">close</span>
-                                    </button>
-                                </div>
+                                <label for="message-avatar-url">Avatar URL (optional)</label>
+                                <input type="url" id="message-avatar-url" class="text-input" placeholder="https://example.com/avatar.png">
                             </div>
                             
                             <div class="form-group">
@@ -167,25 +154,15 @@
                         <section class="detail-section">
                             <h3>Send Embed</h3>
                             
-                            <!-- Username and Avatar for Embed -->
+                            <!-- Username and Avatar URL for Embed -->
                             <div class="form-group">
                                 <label for="embed-username">Username (optional)</label>
                                 <input type="text" id="embed-username" class="text-input" placeholder="Custom username">
                             </div>
                             
                             <div class="form-group">
-                                <label>Avatar (optional)</label>
-                                <div class="input-with-button">
-                                    <input type="url" id="embed-avatar-url" class="text-input" placeholder="https://example.com/avatar.png" readonly>
-                                    <input type="file" id="embed-avatar-file" accept="image/*" class="file-input">
-                                    <button type="button" class="button outlined btn-file-trigger" data-target="embed-avatar-file">
-                                        <span class="material-icons">upload</span>
-                                        Upload
-                                    </button>
-                                    <button type="button" class="button outlined btn-clear-file" data-input="embed-avatar-url" data-file="embed-avatar-file" style="display: none;">
-                                        <span class="material-icons">close</span>
-                                    </button>
-                                </div>
+                                <label for="embed-avatar-url">Avatar URL (optional)</label>
+                                <input type="url" id="embed-avatar-url" class="text-input" placeholder="https://example.com/avatar.png">
                             </div>
                             
                             <!-- Embed Preview (Always visible at top) -->
@@ -260,18 +237,8 @@
                                         <input type="url" id="embed-author-url" class="text-input" placeholder="https://example.com">
                                     </div>
                                     <div class="form-group">
-                                        <label>Author Icon</label>
-                                        <div class="input-with-button">
-                                            <input type="url" id="embed-author-icon-url" class="text-input" placeholder="https://example.com/icon.png" readonly>
-                                            <input type="file" id="embed-author-icon-file" accept="image/*" class="file-input">
-                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-author-icon-file">
-                                                <span class="material-icons">upload</span>
-                                                Upload
-                                            </button>
-                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-author-icon-url" data-file="embed-author-icon-file" style="display: none;">
-                                                <span class="material-icons">close</span>
-                                            </button>
-                                        </div>
+                                        <label for="embed-author-icon-url">Author Icon URL</label>
+                                        <input type="url" id="embed-author-icon-url" class="text-input" placeholder="https://example.com/icon.png">
                                     </div>
                                 </div>
                                 
@@ -303,32 +270,12 @@
                                 <!-- Images Tab -->
                                 <div class="tab-panel" data-panel="images">
                                     <div class="form-group">
-                                        <label>Main Image</label>
-                                        <div class="input-with-button">
-                                            <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png" readonly>
-                                            <input type="file" id="embed-image-file" accept="image/*" class="file-input">
-                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-image-file">
-                                                <span class="material-icons">upload</span>
-                                                Upload
-                                            </button>
-                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-image-url" data-file="embed-image-file" style="display: none;">
-                                                <span class="material-icons">close</span>
-                                            </button>
-                                        </div>
+                                        <label for="embed-image-url">Main Image URL</label>
+                                        <input type="url" id="embed-image-url" class="text-input" placeholder="https://example.com/image.png">
                                     </div>
                                     <div class="form-group">
-                                        <label>Thumbnail</label>
-                                        <div class="input-with-button">
-                                            <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png" readonly>
-                                            <input type="file" id="embed-thumbnail-file" accept="image/*" class="file-input">
-                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-thumbnail-file">
-                                                <span class="material-icons">upload</span>
-                                                Upload
-                                            </button>
-                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-thumbnail-url" data-file="embed-thumbnail-file" style="display: none;">
-                                                <span class="material-icons">close</span>
-                                            </button>
-                                        </div>
+                                        <label for="embed-thumbnail-url">Thumbnail URL</label>
+                                        <input type="url" id="embed-thumbnail-url" class="text-input" placeholder="https://example.com/thumbnail.png">
                                     </div>
                                 </div>
                                 
@@ -339,18 +286,8 @@
                                         <input type="text" id="embed-footer-text" class="text-input" placeholder="Footer text">
                                     </div>
                                     <div class="form-group">
-                                        <label>Footer Icon</label>
-                                        <div class="input-with-button">
-                                            <input type="url" id="embed-footer-icon-url" class="text-input" placeholder="https://example.com/icon.png" readonly>
-                                            <input type="file" id="embed-footer-icon-file" accept="image/*" class="file-input">
-                                            <button type="button" class="button outlined btn-file-trigger" data-target="embed-footer-icon-file">
-                                                <span class="material-icons">upload</span>
-                                                Upload
-                                            </button>
-                                            <button type="button" class="button outlined btn-clear-file" data-input="embed-footer-icon-url" data-file="embed-footer-icon-file" style="display: none;">
-                                                <span class="material-icons">close</span>
-                                            </button>
-                                        </div>
+                                        <label for="embed-footer-icon-url">Footer Icon URL</label>
+                                        <input type="url" id="embed-footer-icon-url" class="text-input" placeholder="https://example.com/icon.png">
                                     </div>
                                 </div>
                             </div>
@@ -359,6 +296,19 @@
                                 <span class="material-icons">article</span>
                                 Send Embed
                             </button>
+                        </section>
+
+                        <!-- Message History Section -->
+                        <section class="detail-section">
+                            <div class="section-header">
+                                <h3>Message History</h3>
+                                <button class="icon-button" id="clear-history-button" title="Clear History">
+                                    <span class="material-icons">delete_sweep</span>
+                                </button>
+                            </div>
+                            <div id="message-history-container">
+                                <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 16px;">No messages sent yet</p>
+                            </div>
                         </section>
 
                         <!-- Danger Zone -->
@@ -461,6 +411,18 @@
                             </button>
                         </div>
                         <span id="status-badge" class="status-badge"></span>
+                        
+                        <!-- Action buttons for webhook from search -->
+                        <div id="status-actions" style="margin-top: 12px; display: none; gap: 8px;">
+                            <button class="button outlined" id="add-from-search-button">
+                                <span class="material-icons">add</span>
+                                Add to Panel
+                            </button>
+                            <button class="button danger" id="delete-from-search-button">
+                                <span class="material-icons">delete</span>
+                                Delete from Discord
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -475,6 +437,22 @@
             
             <div class="dialog-actions">
                 <button class="button text" id="close-status-checker-button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Message Dialog -->
+    <div id="delete-message-dialog" class="dialog-overlay">
+        <div class="dialog">
+            <h2>Delete Message</h2>
+            <p>Enter the message ID to delete:</p>
+            <div class="form-group">
+                <label for="delete-message-id">Message ID</label>
+                <input type="text" id="delete-message-id" class="text-input" placeholder="123456789012345678">
+            </div>
+            <div class="dialog-actions">
+                <button class="button text" id="cancel-delete-message-button">Cancel</button>
+                <button class="button danger" id="confirm-delete-message-button">Delete</button>
             </div>
         </div>
     </div>
