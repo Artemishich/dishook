@@ -85,6 +85,23 @@
                                 <label for="edit-name">Webhook Name</label>
                                 <input type="text" id="edit-name" class="text-input" placeholder="Enter webhook name">
                             </div>
+                            
+                            <!-- Webhook Avatar Upload -->
+                            <div class="form-group">
+                                <label>Webhook Avatar</label>
+                                <div class="input-with-button">
+                                    <input type="url" id="edit-avatar-url" class="text-input" placeholder="Upload an image to change avatar" readonly>
+                                    <input type="file" id="edit-avatar-file" accept="image/*" class="file-input">
+                                    <button type="button" class="button outlined btn-file-trigger" data-target="edit-avatar-file">
+                                        <span class="material-icons">upload</span>
+                                        Upload
+                                    </button>
+                                    <button type="button" class="button outlined btn-clear-file" data-input="edit-avatar-url" data-file="edit-avatar-file" style="display: none;">
+                                        <span class="material-icons">close</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
                             <button class="button primary" id="save-changes-button">
                                 <span class="material-icons">save</span>
                                 Save Changes
@@ -149,6 +166,27 @@
                         <!-- Embeds Section with Tabs -->
                         <section class="detail-section">
                             <h3>Send Embed</h3>
+                            
+                            <!-- Username and Avatar for Embed -->
+                            <div class="form-group">
+                                <label for="embed-username">Username (optional)</label>
+                                <input type="text" id="embed-username" class="text-input" placeholder="Custom username">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Avatar (optional)</label>
+                                <div class="input-with-button">
+                                    <input type="url" id="embed-avatar-url" class="text-input" placeholder="https://example.com/avatar.png" readonly>
+                                    <input type="file" id="embed-avatar-file" accept="image/*" class="file-input">
+                                    <button type="button" class="button outlined btn-file-trigger" data-target="embed-avatar-file">
+                                        <span class="material-icons">upload</span>
+                                        Upload
+                                    </button>
+                                    <button type="button" class="button outlined btn-clear-file" data-input="embed-avatar-url" data-file="embed-avatar-file" style="display: none;">
+                                        <span class="material-icons">close</span>
+                                    </button>
+                                </div>
+                            </div>
                             
                             <!-- Embed Preview (Always visible at top) -->
                             <div class="form-group">
