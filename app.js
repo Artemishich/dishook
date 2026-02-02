@@ -1249,7 +1249,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // FIX 3: Delete message by ID dialog
+    // FIX 3: Delete message by ID button
+    document.getElementById('delete-by-id-button').addEventListener('click', () => {
+        showDialog('delete-message-dialog');
+    });
+    
+    // Clear history button
     document.getElementById('clear-history-button').addEventListener('click', () => {
         if (!manager.currentWebhook) return;
         
